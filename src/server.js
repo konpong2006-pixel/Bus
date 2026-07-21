@@ -25,11 +25,20 @@ function start(userId) {
       type: 'text',
       text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
     },
-    quick('กรุณากดเลือกหรือพิมพ์วันที่เดินทางได้เลยค่ะ', [
+    quick('📅 กรุณากดเลือก หรือพิมพ์วันที่เดินทางได้เลยค่ะ\n\nหากต้องการจองช่วงเทศกาล หรือจองล่วงหน้าเดือนถัดไป\nสามารถกดปุ่ม "จองล่วงหน้า" หรือ "ติดต่อแอดมิน" ได้เลยค่ะ 😊', [
       button('วันนี้', 'action=date&value=today'),
-      button('พรุ่งนี้', 'action=date&value=tomorrow')
+      button('พรุ่งนี้', 'action=date&value=tomorrow'),
+      button('จองล่วงหน้า', 'action=advance_booking'),
+      button('ติดต่อแอดมิน', 'action=contact_admin')
     ])
   ];
+}
+
+function adminContact() {
+  return {
+    type: 'text',
+    text: 'สำหรับการจองล่วงหน้า หรือวันที่ที่อยู่นอกช่วงที่ระบบอัตโนมัติเปิดให้ตรวจสอบ\nกรุณาติดต่อแอดมินเพื่อตรวจสอบรอบรถและที่นั่งโดยตรงค่ะ\n\nทักแชทแอดมิน หรือโทร 092-774-4341\nเวลาตอบแชทและรับจอง 07.00-21.00 น.'
+  };
 }
 
 function pickupChoices(userId) {
@@ -85,6 +94,7 @@ async function handleEvent(event) {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = start(userId);
+    if (action === 'advance_booking' || action === 'contact_admin') message = adminContact();
     if (action === 'date') { setState(userId, { date: bangkokDate(params.get('value') === 'tomorrow' ? 1 : 0) }); message = pickupChoices(userId); }
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = dropoffChoices(userId); }
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = scheduleChoices(userId); }
