@@ -24,28 +24,67 @@ function isoDate(year, month, day) {
   return date.toISOString().slice(0, 10);
 }
 
-function parseTypedDate(text) {
-  const value = text.trim();
+function normaliseThaiDigits(text) {
+  const thaiDigits = { '๐': '0', '๑': '1', '๒': '2', '๓': '3', '๔': '4', '๕': '5', '๖': '6', '๗': '7', '๘': '8', '๙': '9' };
+  return text.replace(/[๐-๙]/g, (digit) => thaiDigits[digit]);
+}
+
+function yearFromInput(value, fallback) {
+  if (!value) return fallback;
+  let year = Number(value);
+  if (year < 100) year += 2000;
+  if (year > 2400) year -= 543;
+  return year;
+}
+
+function dateFromDay(day, text) {
   const today = bangkokDate();
   const [currentYear, currentMonth, currentDay] = today.split('-').map(Number);
+  const wantsNextMonth = /เดือนหน้า|เดือนถัดไป|เดือนหน้าเลย/.test(text);
+  const month = wantsNextMonth || day < currentDay ? currentMonth + 1 : currentMonth;
+  const year = month <= 12 ? currentYear : currentYear + 1;
+  return isoDate(year, month <= 12 ? month : 1, day);
+}
 
-  let match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+function parseTypedDate(text) {
+  const value = normaliseThaiDigits(text).trim().toLowerCase();
+  const today = bangkokDate();
+  const [currentYear] = today.split('-').map(Number);
+
+  let match = value.match(/(\d{4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})/);
   if (match) return isoDate(Number(match[1]), Number(match[2]), Number(match[3]));
 
-  match = value.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  match = value.match(/(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?/);
   if (match) {
-    let year = match[3] ? Number(match[3]) : currentYear;
-    if (year < 100) year += 2000;
-    if (year > 2400) year -= 543;
+    const year = yearFromInput(match[3], currentYear);
     return isoDate(year, Number(match[2]), Number(match[1]));
   }
 
-  match = value.match(/^(\d{1,2})$/);
+  const months = [
+    ['มกราคม', 'ม.ค.', 'มค', 'jan'], ['กุมภาพันธ์', 'ก.พ.', 'กพ', 'feb'],
+    ['มีนาคม', 'มี.ค.', 'มีค', 'mar'], ['เมษายน', 'เม.ย.', 'เมย', 'apr'],
+    ['พฤษภาคม', 'พ.ค.', 'พค', 'may'], ['มิถุนายน', 'มิ.ย.', 'มิย', 'jun'],
+    ['กรกฎาคม', 'ก.ค.', 'กค', 'jul'], ['สิงหาคม', 'ส.ค.', 'สค', 'aug'],
+    ['กันยายน', 'ก.ย.', 'กย', 'sep'], ['ตุลาคม', 'ต.ค.', 'ตค', 'oct'],
+    ['พฤศจิกายน', 'พ.ย.', 'พย', 'nov'], ['ธันวาคม', 'ธ.ค.', 'ธค', 'dec']
+  ];
+  for (const [index, names] of months.entries()) {
+    if (names.some((name) => value.includes(name))) {
+      match = value.match(/(?:วันที่|วันที|วัน)?\s*(\d{1,2})/);
+      if (match) return isoDate(currentYear, index + 1, Number(match[1]));
+    }
+  }
+
+  match = value.match(/(?:วันที่|วันที|วันเดินทาง|เดินทางวันที่|ไปวันที่|จองวันที่)\s*(\d{1,2})/);
+  if (match) return dateFromDay(Number(match[1]), value);
+
+  match = value.match(/^(\d{1,2})\s*(?:ค่ะ|คะ|ครับ|จ้า|จ๊ะ|นะ|น้า)$/);
+  if (match) return dateFromDay(Number(match[1]), value);
+
+  match = value.match(/(?:^|[^\dA-Za-zก-ฮ])(\d{1,2})(?:$|[^\dA-Za-zก-ฮ])/);
   if (match) {
     const day = Number(match[1]);
-    const month = day >= currentDay ? currentMonth : currentMonth + 1;
-    const year = month <= 12 ? currentYear : currentYear + 1;
-    return isoDate(year, month <= 12 ? month : 1, day);
+    return dateFromDay(day, value);
   }
 
   return null;
@@ -56,13 +95,22 @@ function isInBookingWindow(date, days = 7) {
 }
 
 function dateMessage(userId, text) {
+  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return adminContact();
   const date = parseTypedDate(text);
-  if (!date) return start(userId);
+  if (!date) return unclearDateMessage();
   if (isInBookingWindow(date) || hasSchedulesOnDate(date)) {
     setState(userId, { date });
     return pickupChoices(userId);
   }
   return adminContact();
+}
+
+function unclearDateMessage() {
+  return quick('ขออภัยค่ะ ระบบยังอ่านวันที่เดินทางไม่ชัดเจน\n\nกรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์เป็นตัวอย่างเช่น 28, 28/7, วันที่ 28 ค่ะ', [
+    ...dateButtons(),
+    button('จองล่วงหน้า', 'action=advance_booking'),
+    button('ติดต่อแอดมิน', 'action=contact_admin')
+  ]);
 }
 
 function dateButtons(days = 7) {
