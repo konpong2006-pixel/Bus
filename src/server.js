@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
-import { getRoutes, getRoute, routesForJourney, schedulesFor } from './data.js';
+import { getRoutes, getRoute, routesForJourney, schedulesFor, hasSchedulesOnDate } from './data.js';
 import { addMinutes, bangkokDate, durationText, thaiDate } from './time.js';
 
 const required = ['LINE_CHANNEL_ACCESS_TOKEN', 'LINE_CHANNEL_SECRET'];
@@ -18,6 +18,61 @@ function chunk(items, size = 13) { return items.slice(0, size); }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
 
+function isoDate(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function parseTypedDate(text) {
+  const value = text.trim();
+  const today = bangkokDate();
+  const [currentYear, currentMonth, currentDay] = today.split('-').map(Number);
+
+  let match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) return isoDate(Number(match[1]), Number(match[2]), Number(match[3]));
+
+  match = value.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  if (match) {
+    let year = match[3] ? Number(match[3]) : currentYear;
+    if (year < 100) year += 2000;
+    if (year > 2400) year -= 543;
+    return isoDate(year, Number(match[2]), Number(match[1]));
+  }
+
+  match = value.match(/^(\d{1,2})$/);
+  if (match) {
+    const day = Number(match[1]);
+    const month = day >= currentDay ? currentMonth : currentMonth + 1;
+    const year = month <= 12 ? currentYear : currentYear + 1;
+    return isoDate(year, month <= 12 ? month : 1, day);
+  }
+
+  return null;
+}
+
+function isInBookingWindow(date, days = 7) {
+  return date >= bangkokDate() && date <= bangkokDate(days - 1);
+}
+
+function dateMessage(userId, text) {
+  const date = parseTypedDate(text);
+  if (!date) return start(userId);
+  if (isInBookingWindow(date) || hasSchedulesOnDate(date)) {
+    setState(userId, { date });
+    return pickupChoices(userId);
+  }
+  return adminContact();
+}
+
+function dateButtons(days = 7) {
+  return Array.from({ length: days }, (_, index) => {
+    const date = bangkokDate(index);
+    const day = String(Number(date.slice(8, 10)));
+    return button(day, `action=date&value=${date}`, day);
+  });
+}
+
 function start(userId) {
   state.set(userId, {});
   return [
@@ -26,8 +81,7 @@ function start(userId) {
       text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
     },
     quick('📅 กรุณากดเลือก หรือพิมพ์วันที่เดินทางได้เลยค่ะ\n\nหากต้องการจองช่วงเทศกาล หรือจองล่วงหน้าเดือนถัดไป\nสามารถกดปุ่ม "จองล่วงหน้า" หรือ "ติดต่อแอดมิน" ได้เลยค่ะ 😊', [
-      button('วันนี้', 'action=date&value=today'),
-      button('พรุ่งนี้', 'action=date&value=tomorrow'),
+      ...dateButtons(),
       button('จองล่วงหน้า', 'action=advance_booking'),
       button('ติดต่อแอดมิน', 'action=contact_admin')
     ])
@@ -89,13 +143,13 @@ async function handleEvent(event) {
   let message;
   if (event.type === 'follow') message = start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    message = start(userId);
+    message = dateMessage(userId, event.message.text);
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = start(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = adminContact();
-    if (action === 'date') { setState(userId, { date: bangkokDate(params.get('value') === 'tomorrow' ? 1 : 0) }); message = pickupChoices(userId); }
+    if (action === 'date') { setState(userId, { date: params.get('value') }); message = pickupChoices(userId); }
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = dropoffChoices(userId); }
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = scheduleChoices(userId); }
     if (action === 'schedule') message = result(userId, params.get('route'), params.get('time'));

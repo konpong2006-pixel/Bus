@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routesForJourney, schedulesFor } from '../src/data.js';
+import { hasSchedulesOnDate, routesForJourney, schedulesFor } from '../src/data.js';
 import { addMinutes } from '../src/time.js';
 
 test('finds the forward route when pickup precedes dropoff', () => {
@@ -17,6 +17,11 @@ test('uses daily default schedules when no date-specific schedule exists', () =>
 
 test('uses date-specific schedules in preference to defaults', () => {
   assert.deepEqual(schedulesFor('RY-KOR', '2026-07-22').map((item) => item.departureTime), ['07:00']);
+});
+
+test('detects dates with explicit schedules', () => {
+  assert.equal(hasSchedulesOnDate('2026-07-22'), true);
+  assert.equal(hasSchedulesOnDate('2026-08-22'), false);
 });
 
 test('adds a stop offset and shows next-day arrival', () => {

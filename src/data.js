@@ -32,3 +32,7 @@ export function schedulesFor(routeId, date) {
   const selected = dated.length ? dated : schedules.filter((item) => item.routeId === routeId && item.date === null && item.active);
   return selected.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
 }
+
+export function hasSchedulesOnDate(date) {
+  return readJson('schedules.json').schedules.some((item) => item.date === date && item.active);
+}
