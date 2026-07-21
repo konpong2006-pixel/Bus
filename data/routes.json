@@ -1,0 +1,32 @@
+{
+  "routes": [
+    {
+      "id": "RY-KOR",
+      "name": "ระยอง → โคราช",
+      "origin": "ระยอง",
+      "stops": [
+        { "id": "rayong", "name": "ระยอง", "minutesFromOrigin": 0 },
+        { "id": "map-ta-phut", "name": "มาบตาพุด", "minutesFromOrigin": 10 },
+        { "id": "ban-chang", "name": "บ้านฉาง", "minutesFromOrigin": 25 },
+        { "id": "km10", "name": "กม.10", "minutesFromOrigin": 40 },
+        { "id": "khao-mai-kaew", "name": "เขาไม้แก้ว", "minutesFromOrigin": 70 },
+        { "id": "bo-win", "name": "บ่อวิน", "minutesFromOrigin": 90 },
+        { "id": "nava-nakhon", "name": "นวนคร", "minutesFromOrigin": 120 },
+        { "id": "kabin", "name": "กบินทร์บุรี", "minutesFromOrigin": 240 },
+        { "id": "korat", "name": "โคราช", "minutesFromOrigin": 450 }
+      ]
+    },
+    {
+      "id": "KOR-RY",
+      "name": "โคราช → ระยอง",
+      "origin": "โคราช",
+      "stops": [
+        { "id": "korat", "name": "โคราช", "minutesFromOrigin": 0 },
+        { "id": "kabin", "name": "กบินทร์บุรี", "minutesFromOrigin": 85 },
+        { "id": "bo-win", "name": "บ่อวิน", "minutesFromOrigin": 330 },
+        { "id": "ban-chang", "name": "บ้านฉาง", "minutesFromOrigin": 395 },
+        { "id": "rayong", "name": "ระยอง", "minutesFromOrigin": 420 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    { "id": "default-rykor-0400", "date": null, "routeId": "RY-KOR", "departureTime": "04:00", "active": true },
+    { "id": "default-rykor-0600", "date": null, "routeId": "RY-KOR", "departureTime": "06:00", "active": true },
+    { "id": "default-rykor-1000", "date": null, "routeId": "RY-KOR", "departureTime": "10:00", "active": true },
+    { "id": "default-korry-0500", "date": null, "routeId": "KOR-RY", "departureTime": "05:00", "active": true },
+    { "id": "default-korry-0800", "date": null, "routeId": "KOR-RY", "departureTime": "08:00", "active": true },
+    { "id": "example-2026-07-22-rykor-0700", "date": "2026-07-22", "routeId": "RY-KOR", "departureTime": "07:00", "active": true }
+  ]
+}
