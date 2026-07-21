@@ -20,10 +20,16 @@ function setState(userId, patch) { state.set(userId, { ...userState(userId), ...
 
 function start(userId) {
   state.set(userId, {});
-  return quick('🚌 เช็กรอบรถ\nเลือกวันที่เดินทาง', [
-    button('วันนี้', 'action=date&value=today'),
-    button('พรุ่งนี้', 'action=date&value=tomorrow')
-  ]);
+  return [
+    {
+      type: 'text',
+      text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
+    },
+    quick('กรุณากดเลือกหรือพิมพ์วันที่เดินทางได้เลยค่ะ', [
+      button('วันนี้', 'action=date&value=today'),
+      button('พรุ่งนี้', 'action=date&value=tomorrow')
+    ])
+  ];
 }
 
 function pickupChoices(userId) {
@@ -87,7 +93,7 @@ async function handleEvent(event) {
   if (!message) message = { type: 'text', text: 'พิมพ์ข้อความใด ๆ เพื่อเริ่มเช็กรอบรถค่ะ' };
   await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
-    body: JSON.stringify({ replyToken: event.replyToken, messages: [message] })
+    body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(message) ? message : [message] })
   });
 }
 
