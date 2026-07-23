@@ -96,6 +96,20 @@ function isInBookingWindow(date, days = 7) {
   return date >= bangkokDate() && date <= bangkokDate(days - 1);
 }
 
+function sourceIdMessage(event, text) {
+  const value = text.trim();
+  if (value === 'ขอไอดีกลุ่ม') {
+    if (event.source.type !== 'group') {
+      return { type: 'text', text: 'คำสั่งนี้ต้องพิมพ์ในกลุ่ม LINE ที่มีบอทอยู่ค่ะ' };
+    }
+    return { type: 'text', text: `groupId ของกลุ่มนี้:\n${event.source.groupId}` };
+  }
+  if (value === 'ขอไอดีแอดมิน') {
+    return { type: 'text', text: `userId ของแชทนี้:\n${event.source.userId}` };
+  }
+  return null;
+}
+
 function dateMessage(userId, text) {
   if (/จอง|ซื้อตั๋ว|จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
   const date = parseTypedDate(text);
@@ -283,7 +297,7 @@ async function handleEvent(event) {
   let message;
   if (event.type === 'follow') message = start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    message = dateMessage(userId, event.message.text);
+    message = sourceIdMessage(event, event.message.text) ?? dateMessage(userId, event.message.text);
   } else if (event.type === 'message' && event.message.type === 'image') {
     message = await slipMessage(event);
   } else if (event.type === 'postback') {
