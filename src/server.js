@@ -110,8 +110,128 @@ function sourceIdMessage(event, text) {
   return null;
 }
 
+function askBookingDate(userId) {
+  setState(userId, { booking: { step: 'date' } });
+  return { type: 'text', text: '📅 เดินทางวันที่เท่าไหร่คะ' };
+}
+
+function bookingAsk(text) {
+  return { type: 'text', text };
+}
+
+function parseSeats(text) {
+  const match = normaliseThaiDigits(text).match(/\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function parseContact(text) {
+  const phoneMatch = normaliseThaiDigits(text).match(/0[\d\s-]{8,}/);
+  const phone = phoneMatch ? phoneMatch[0].replace(/\s+/g, ' ').trim() : '';
+  const name = text
+    .replace(/ชื่อผู้จอง|ผู้จอง|ชื่อ|เบอร์โทร|เบอร์|โทร|[:：]/g, '')
+    .replace(phoneMatch?.[0] ?? '', '')
+    .trim();
+  return { name: name || text.trim(), phone };
+}
+
+function bookingSummary(booking) {
+  return `กรุณาตรวจสอบข้อมูลค่ะ
+
+📅 วันที่: ${thaiDate(booking.date)}
+🚍 ต้นทาง: ${booking.originProvince}
+🏁 ปลายทาง: ${booking.destinationProvince}
+⏰ รอบ: ${booking.departureTime}
+📍 จุดขึ้น: ${booking.pickupPoint}
+🎟️ จำนวน: ${booking.seats} ที่นั่ง
+👤 ผู้จอง: ${booking.customerName}
+📞 เบอร์: ${booking.phone || '-'}
+💰 ยอดชำระ: รอแอดมินยืนยัน
+
+หากถูกต้อง กรุณาโอนเงินแล้วส่งสลิปในแชทนี้ค่ะ`;
+}
+
+function adminBookingText(booking, paidText = '') {
+  return `✅ ชำระเงินสำเร็จ / รอออกตั๋ว
+
+📅 วันที่: ${thaiDate(booking.date)}
+🚍 จังหวัดต้นทาง: ${booking.originProvince}
+🏁 จังหวัดปลายทาง: ${booking.destinationProvince}
+⏰ เวลา: ${booking.departureTime}
+📍 จุดขึ้น: ${booking.pickupPoint}
+
+👤 ผู้จอง: ${booking.customerName}
+📞 เบอร์โทร: ${booking.phone || '-'}
+
+🚌 เบอร์รถ: รอแจ้ง
+🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
+💰 ยอดโอนเงิน: ${paidText || 'ตรวจผ่าน SlipOK'}
+
+☎️ เบอร์คนขับ: รอแจ้ง
+☎️ เบอร์แอดมิน: 092-774-4341
+
+โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
+}
+
+function handleBookingText(userId, text) {
+  const current = userState(userId).booking;
+  if (!current?.step) return null;
+
+  const value = text.trim();
+  if (['ยกเลิก', 'เริ่มใหม่', 'cancel'].includes(value.toLowerCase())) {
+    setState(userId, { booking: null });
+    return { type: 'text', text: 'ยกเลิกการจองแล้วค่ะ หากต้องการเริ่มใหม่พิมพ์ว่า จองตั๋ว ได้เลยค่ะ' };
+  }
+
+  if (current.step === 'date') {
+    const date = parseTypedDate(value);
+    if (!date) return bookingAsk('📅 ขอวันที่เดินทางอีกครั้งค่ะ เช่น 25 หรือ 25/07/69');
+    setState(userId, { booking: { ...current, step: 'originProvince', date } });
+    return bookingAsk('🚍 เดินทางจากจังหวัดไหนคะ');
+  }
+
+  if (current.step === 'originProvince') {
+    setState(userId, { booking: { ...current, step: 'destinationProvince', originProvince: value } });
+    return bookingAsk('🏁 ต้องการไปลงจังหวัดไหนคะ');
+  }
+
+  if (current.step === 'destinationProvince') {
+    setState(userId, { booking: { ...current, step: 'departureTime', destinationProvince: value } });
+    return bookingAsk('⏰ ต้องการรอบกี่โมงคะ');
+  }
+
+  if (current.step === 'departureTime') {
+    setState(userId, { booking: { ...current, step: 'pickupPoint', departureTime: value } });
+    return bookingAsk('📍 ขึ้นรถตรงจุดไหนคะ');
+  }
+
+  if (current.step === 'pickupPoint') {
+    setState(userId, { booking: { ...current, step: 'seats', pickupPoint: value } });
+    return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
+  }
+
+  if (current.step === 'seats') {
+    const seats = parseSeats(value);
+    if (!seats) return bookingAsk('🎟️ ขอจำนวนที่นั่งเป็นตัวเลขค่ะ เช่น 1 หรือ 2');
+    setState(userId, { booking: { ...current, step: 'contact', seats } });
+    return bookingAsk('👤 ขอชื่อผู้จองและเบอร์โทรค่ะ');
+  }
+
+  if (current.step === 'contact') {
+    const contact = parseContact(value);
+    const booking = { ...current, step: 'awaiting_slip', customerName: contact.name, phone: contact.phone };
+    setState(userId, { booking });
+    const summary = { type: 'text', text: bookingSummary(booking) };
+    return withPaymentQr(summary);
+  }
+
+  return null;
+}
+
 function dateMessage(userId, text) {
-  if (/จอง|ซื้อตั๋ว|จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
+  const booking = handleBookingText(userId, text);
+  if (booking) return booking;
+  if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
+  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
   const date = parseTypedDate(text);
   if (!date) return unclearDateMessage();
   if (isInBookingWindow(date) || hasSchedulesOnDate(date)) {
@@ -236,8 +356,15 @@ async function slipMessage(event) {
     const paidText = amount == null ? '' : `\nยอดชำระ: ${amount.toLocaleString('th-TH')} บาท`;
     const receiverText = slipReceiver(result.data) ? `\nผู้รับเงิน: ${slipReceiver(result.data)}` : '';
     const dateText = slipDate(result.data) ? `\nเวลาตามสลิป: ${slipDate(result.data)}` : '';
+    const booking = userState(event.source.userId).booking;
 
-    await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
+    if (booking?.step === 'awaiting_slip') {
+      const adminPaidText = amount == null ? 'ตรวจผ่าน SlipOK' : `${amount.toLocaleString('th-TH')} บาท`;
+      await pushAdminText(adminBookingText(booking, adminPaidText));
+      setState(event.source.userId, { booking: { ...booking, step: 'paid' } });
+    } else {
+      await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
+    }
 
     return {
       type: 'text',
@@ -287,7 +414,7 @@ function result(userId, routeId, departureTime) {
   return {
     type: 'text',
     text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\nรอบออกจาก${route.origin}: ${departureTime} น.\n📍 รถจะถึง ${pickup.name} ประมาณ ${addMinutes(departureTime, pickup.minutesFromOrigin)} น.\n🏁 ถึง ${dropoff.name} ประมาณ ${addMinutes(departureTime, dropoff.minutesFromOrigin)} น.\n⏱️ ใช้เวลาเดินทางประมาณ ${durationText(rideMinutes)}\n\nกรุณามารอรถก่อนเวลา 10–15 นาที\nต้องการจองที่นั่ง/สอบถามเพิ่มเติม กรุณาติดต่อแอดมิน`,
-    quickReply: { items: [button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
+    quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
 }
 
@@ -304,6 +431,7 @@ async function handleEvent(event) {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = start(userId);
+    if (action === 'start_booking') message = askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
     if (action === 'date') { setState(userId, { date: params.get('value') }); message = pickupChoices(userId); }
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = dropoffChoices(userId); }
