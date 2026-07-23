@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hasSchedulesOnDate, routesForJourney, schedulesFor } from '../src/data.js';
-import { addMinutes } from '../src/time.js';
+import { addMinutes, bangkokHour } from '../src/time.js';
 
 test('finds the forward route when pickup precedes dropoff', () => {
   assert.deepEqual(routesForJourney('km10', 'korat').map((route) => route.id), ['RY-KOR']);
@@ -26,4 +26,9 @@ test('detects dates with explicit schedules', () => {
 
 test('adds a stop offset and shows next-day arrival', () => {
   assert.equal(addMinutes('23:40', 40), '00:20 (วันถัดไป)');
+});
+
+test('gets Bangkok hour', () => {
+  assert.equal(Number.isInteger(bangkokHour()), true);
+  assert.equal(bangkokHour() >= 0 && bangkokHour() <= 23, true);
 });

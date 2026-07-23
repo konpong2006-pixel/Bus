@@ -23,6 +23,11 @@ export function bangkokDate(offset = 0) {
   return date.toISOString().slice(0, 10);
 }
 
+export function bangkokHour() {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bangkok', hour: '2-digit', hour12: false }).formatToParts(new Date());
+  return Number(parts.find((part) => part.type === 'hour').value);
+}
+
 export function thaiDate(iso) {
   return new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${iso}T12:00:00+07:00`));
 }

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
 import { getRoutes, getRoute, routesForJourney, schedulesFor, hasSchedulesOnDate } from './data.js';
-import { addMinutes, bangkokDate, durationText, thaiDate } from './time.js';
+import { addMinutes, bangkokDate, bangkokHour, durationText, thaiDate } from './time.js';
 
 const required = ['LINE_CHANNEL_ACCESS_TOKEN', 'LINE_CHANNEL_SECRET'];
 for (const key of required) if (!process.env[key]) console.warn(`คำเตือน: ยังไม่ได้ตั้งค่า ${key}`);
@@ -95,14 +95,14 @@ function isInBookingWindow(date, days = 7) {
 }
 
 function dateMessage(userId, text) {
-  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return adminContact();
+  if (/จอง|ซื้อตั๋ว|จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
   const date = parseTypedDate(text);
   if (!date) return unclearDateMessage();
   if (isInBookingWindow(date) || hasSchedulesOnDate(date)) {
     setState(userId, { date });
     return pickupChoices(userId);
   }
-  return adminContact();
+  return bookingContact();
 }
 
 function unclearDateMessage() {
@@ -141,6 +141,22 @@ function adminContact() {
     type: 'text',
     text: 'สำหรับการจองล่วงหน้า หรือวันที่ที่อยู่นอกช่วงที่ระบบอัตโนมัติเปิดให้ตรวจสอบ\nกรุณาติดต่อแอดมินเพื่อตรวจสอบรอบรถและที่นั่งโดยตรงค่ะ\n\nทักแชทแอดมิน หรือโทร 092-774-4341\nเวลาตอบแชทและรับจอง 07.00-21.00 น.'
   };
+}
+
+function isBookingOpen() {
+  const hour = bangkokHour();
+  return hour >= 7 && hour < 21;
+}
+
+function afterHoursBooking() {
+  return {
+    type: 'text',
+    text: 'ขณะนี้อยู่นอกเวลารับจองค่ะ\n\nระบบตอบกลับอัตโนมัติยังสามารถช่วยตรวจสอบรอบรถเบื้องต้นได้\nแต่การจองที่นั่งและการยืนยันตั๋ว แอดมินจะดูแลในเวลา 07.00-21.00 น.\n\nหากเป็นเรื่องเร่งด่วน สามารถโทร 092-774-4341 ได้ค่ะ'
+  };
+}
+
+function bookingContact() {
+  return isBookingOpen() ? adminContact() : afterHoursBooking();
 }
 
 function pickupChoices(userId) {
@@ -196,7 +212,7 @@ async function handleEvent(event) {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = start(userId);
-    if (action === 'advance_booking' || action === 'contact_admin') message = adminContact();
+    if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
     if (action === 'date') { setState(userId, { date: params.get('value') }); message = pickupChoices(userId); }
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = dropoffChoices(userId); }
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = scheduleChoices(userId); }
