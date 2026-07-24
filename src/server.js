@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
-import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor, stopArrivalTime } from './data.js';
+import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
-import { addMinutes, bangkokDate, bangkokHour, durationText, thaiDate } from './time.js';
+import { bangkokDate, bangkokHour, thaiDate } from './time.js';
 
 const required = ['LINE_CHANNEL_ACCESS_TOKEN', 'LINE_CHANNEL_SECRET'];
 for (const key of required) if (!process.env[key]) console.warn(`คำเตือน: ยังไม่ได้ตั้งค่า ${key}`);
@@ -523,13 +523,10 @@ async function result(userId, routeId, departureTime) {
   const pickup = route.stops.find((stop) => stop.id === pickupId);
   const dropoff = route.stops.find((stop) => stop.id === dropoffId);
   if (!pickup || !dropoff) return { type: 'text', text: 'ข้อมูลไม่ครบ กรุณาเริ่มเช็กรอบรถใหม่ค่ะ' };
-  const pickupTime = await stopArrivalTime(routeId, departureTime, pickup.name) ?? addMinutes(departureTime, pickup.minutesFromOrigin);
-  const dropoffTime = await stopArrivalTime(routeId, departureTime, dropoff.name) ?? addMinutes(departureTime, dropoff.minutesFromOrigin);
-  const rideMinutes = Math.max(0, (dropoff.minutesFromOrigin - pickup.minutesFromOrigin) * 15);
   setState(userId, { selectedRouteId: routeId, selectedDepartureTime: departureTime });
   return {
     type: 'text',
-    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\nรอบออกจาก${route.origin}: ${departureTime} น.\n📍 รถจะถึง ${pickup.name} ประมาณ ${pickupTime} น.\n🏁 ถึง ${dropoff.name} ประมาณ ${dropoffTime} น.\n⏱️ ใช้เวลาเดินทางประมาณ ${durationText(rideMinutes)}\n\nกรุณามารอรถก่อนเวลา 10–15 นาที\nต้องการจองที่นั่ง/สอบถามเพิ่มเติม กรุณาติดต่อแอดมิน`,
+    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\n⏰ รอบออกจาก${route.origin}: ${departureTime} น.\n📍 จุดขึ้น: ${pickup.name}\n🏁 จุดลง: ${dropoff.name}\n\nหมายเหตุ: เวลาถึงจุดขึ้น/จุดลงอาจคลาดเคลื่อนตามสภาพถนนค่ะ\nกรุณามารอรถก่อนเวลา และติดต่อแอดมินเพื่อยืนยันจุดขึ้นอีกครั้ง`,
     quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
 }
