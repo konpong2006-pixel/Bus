@@ -80,15 +80,31 @@ async function loadSheetData() {
     const rows = await sheetRows(tabName, 'A3:E200') ?? [];
     return rows
       .filter((row) => row[0] && row[1] && row[2] !== '' && normalizeActive(row[3]))
-      .map(([pickupName, dropoffName, rawPrice]) => ({
-        routeId: route.id,
-        pickupId: normalizePlace(pickupName),
-        dropoffId: normalizePlace(dropoffName),
-        pickupName: String(pickupName).trim(),
-        dropoffName: String(dropoffName).trim(),
-        price: parseNumber(rawPrice),
-        active: true
-      }))
+      .flatMap(([originPickup, zonePickup, rawPrice]) => {
+        const price = parseNumber(rawPrice);
+        const destinationName = route.destination;
+        const candidates = [
+          String(originPickup).trim(),
+          String(zonePickup).trim()
+        ];
+        const seen = new Set();
+        return candidates
+          .filter((pickupName) => {
+            const id = normalizePlace(pickupName);
+            if (!id || id === normalizePlace(destinationName) || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          })
+          .map((pickupName) => ({
+            routeId: route.id,
+            pickupId: normalizePlace(pickupName),
+            dropoffId: normalizePlace(destinationName),
+            pickupName,
+            dropoffName: destinationName,
+            price,
+            active: true
+          }));
+      })
       .filter((fare) => Number.isFinite(fare.price) && fare.price > 0);
   }));
   const fares = fareGroups.flat();

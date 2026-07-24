@@ -489,9 +489,18 @@ async function slipMessage(event) {
   }
 }
 
-async function pickupChoices(userId) {
+async function pickupChoices(userId, page = 0) {
   const stops = await pickupStops();
-  return quick('เลือกจุดขึ้นรถ', chunk(stops.map(({ id, name }) => button(name, `action=pickup&value=${id}`))));
+  const pageSize = 11;
+  const totalPages = Math.max(1, Math.ceil(stops.length / pageSize));
+  const currentPage = Math.min(Math.max(Number(page) || 0, 0), totalPages - 1);
+  const start = currentPage * pageSize;
+  const options = stops
+    .slice(start, start + pageSize)
+    .map(({ id, name }) => button(name, `action=pickup&value=${id}`));
+  if (currentPage > 0) options.push(button('ย้อนกลับ', `action=pickup_page&page=${currentPage - 1}`, 'ย้อนกลับ'));
+  if (currentPage < totalPages - 1) options.push(button('ถัดไป', `action=pickup_page&page=${currentPage + 1}`, 'ถัดไป'));
+  return quick(`เลือกจุดขึ้นรถ (${currentPage + 1}/${totalPages})`, options);
 }
 
 async function dropoffChoices(userId) {
@@ -547,6 +556,7 @@ async function handleEvent(event) {
     if (action === 'start_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
     if (action === 'date') { setState(userId, { date: params.get('value') }); message = await pickupChoices(userId); }
+    if (action === 'pickup_page') message = await pickupChoices(userId, params.get('page'));
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = await dropoffChoices(userId); }
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = await scheduleChoices(userId); }
     if (action === 'schedule') message = await result(userId, params.get('route'), params.get('time'));
