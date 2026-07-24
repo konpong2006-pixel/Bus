@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
-import { dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor, stopArrivalTime } from './data.js';
+import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor, stopArrivalTime } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
 import { addMinutes, bangkokDate, bangkokHour, durationText, thaiDate } from './time.js';
@@ -150,7 +150,11 @@ async function askBookingDate(userId) {
     return { type: 'text', text: `📅 ใช้วันที่ ${thaiDate(date)} ค่ะ\n\n🚍 เดินทางจากจังหวัดไหนคะ` };
   }
   setState(userId, { booking: { step: 'date' } });
-  return { type: 'text', text: '📅 เดินทางวันที่เท่าไหร่คะ' };
+  return quick('📅 เดินทางวันที่เท่าไหร่คะ\nกรุณากดเลือกเฉพาะวันที่ระบบมีรอบรถค่ะ', [
+    ...await dateButtons(),
+    button('จองล่วงหน้า', 'action=advance_booking'),
+    button('ติดต่อแอดมิน', 'action=contact_admin')
+  ]);
 }
 
 function bookingAsk(text) {
@@ -317,31 +321,32 @@ async function dateMessage(userId, text) {
   return bookingContact();
 }
 
-function unclearDateMessage() {
+async function unclearDateMessage() {
   return quick('ขออภัยค่ะ ระบบยังอ่านวันที่เดินทางไม่ชัดเจน\n\nกรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์เป็นตัวอย่างเช่น 28, 28/7, วันที่ 28 ค่ะ', [
-    ...dateButtons(),
+    ...await dateButtons(),
     button('จองล่วงหน้า', 'action=advance_booking'),
     button('ติดต่อแอดมิน', 'action=contact_admin')
   ]);
 }
 
-function dateButtons(days = 7) {
-  return Array.from({ length: days }, (_, index) => {
-    const date = bangkokDate(index);
+async function dateButtons() {
+  const dates = await availableScheduleDates();
+  return dates.map((date) => {
     const day = String(Number(date.slice(8, 10)));
     return button(day, `action=date&value=${date}`, day);
   });
 }
 
-function start(userId) {
+async function start(userId) {
   state.set(userId, {});
+  const buttons = await dateButtons();
   return [
     {
       type: 'text',
       text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
     },
     quick('📅 กรุณากดเลือก หรือพิมพ์วันที่เดินทางได้เลยค่ะ\n\nหากต้องการจองช่วงเทศกาล หรือจองล่วงหน้าเดือนถัดไป\nสามารถกดปุ่ม "จองล่วงหน้า" หรือ "ติดต่อแอดมิน" ได้เลยค่ะ 😊', [
-      ...dateButtons(),
+      ...buttons,
       button('จองล่วงหน้า', 'action=advance_booking'),
       button('ติดต่อแอดมิน', 'action=contact_admin')
     ])
@@ -533,7 +538,7 @@ async function handleEvent(event) {
   if (!event.replyToken) return;
   const userId = event.source.userId;
   let message;
-  if (event.type === 'follow') message = start(userId);
+  if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
   } else if (event.type === 'message' && event.message.type === 'image') {
@@ -541,7 +546,7 @@ async function handleEvent(event) {
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
-    if (action === 'restart') message = start(userId);
+    if (action === 'restart') message = await start(userId);
     if (action === 'start_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
     if (action === 'date') { setState(userId, { date: params.get('value') }); message = await pickupChoices(userId); }

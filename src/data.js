@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getBackendSheetValues } from './googleSheets.js';
+import { bangkokDate } from './time.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(dirname, '..', 'data');
@@ -180,6 +181,16 @@ export async function hasSchedulesOnDate(date) {
   const { schedules, dayOpen } = await busData();
   if (dayOpen.get(date) === false) return false;
   return schedules.some((item) => item.date === date && item.active);
+}
+
+export async function availableScheduleDates(limit = 11) {
+  const { schedules, dayOpen } = await busData();
+  const today = bangkokDate();
+  return [...new Set(schedules
+    .filter((item) => item.active && item.date && item.date >= today && dayOpen.get(item.date) !== false)
+    .map((item) => item.date))]
+    .sort()
+    .slice(0, limit);
 }
 
 export async function fareForJourney(routeId, pickupId, dropoffId) {
