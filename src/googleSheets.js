@@ -22,7 +22,7 @@ function serviceAccountKey() {
 }
 
 export function bookingSheetConfigured() {
-  return Boolean(process.env.BOOKING_SHEET_ID && serviceAccountKey());
+  return Boolean(appsScriptUrl() || (process.env.BOOKING_SHEET_ID && serviceAccountKey()));
 }
 
 function backendSheetId() {
@@ -161,6 +161,18 @@ function bangkokTimestamp() {
 
 export async function appendPaidBooking({ booking, paidAmount, note = '', checkedBy = 'ระบบอัตโนมัติ' }) {
   if (!bookingSheetConfigured()) return { skipped: true };
+
+  const appUrl = appsScriptUrl();
+  if (appUrl) {
+    const response = await fetch(appUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'appendPaidBooking', booking, paidAmount, note, checkedBy })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.ok === false) throw new Error(`Apps Script append failed: ${response.status} ${result.error ?? ''}`);
+    return { skipped: false, result };
+  }
 
   const token = await googleAccessToken();
   const sheetId = process.env.BOOKING_SHEET_ID;
