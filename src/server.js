@@ -110,7 +110,42 @@ function sourceIdMessage(event, text) {
   return null;
 }
 
+function selectedTripBooking(userId) {
+  const { date, pickupId, dropoffId, selectedRouteId, selectedDepartureTime } = userState(userId);
+  if (!date || !pickupId || !dropoffId || !selectedRouteId || !selectedDepartureTime) return null;
+
+  const route = getRoute(selectedRouteId);
+  const pickup = route?.stops.find((stop) => stop.id === pickupId);
+  const dropoff = route?.stops.find((stop) => stop.id === dropoffId);
+  if (!route || !pickup || !dropoff) return null;
+
+  return {
+    step: 'pickupSpecial',
+    date,
+    originProvince: route.origin,
+    destinationProvince: dropoff.name,
+    departureTime: selectedDepartureTime,
+    pickupPoint: pickup.name,
+    dropoffPoint: dropoff.name,
+    routeId: selectedRouteId
+  };
+}
+
 function askBookingDate(userId) {
+  const selectedBooking = selectedTripBooking(userId);
+  if (selectedBooking) {
+    setState(userId, { booking: selectedBooking });
+    return {
+      type: 'text',
+      text: `📅 ใช้วันที่ ${thaiDate(selectedBooking.date)} ค่ะ\n🚍 เส้นทาง: ${selectedBooking.originProvince} ไป ${selectedBooking.destinationProvince}\n⏰ รอบ: ${selectedBooking.departureTime} น.\n📍 จุดขึ้นหลัก: ${selectedBooking.pickupPoint}\n\n📌 ขอจุดขึ้นพิเศษหน่อยค่ะ เช่น หน้าบิ๊กซี / สะพานลอย / จุดนัดรับใกล้เคียง`
+    };
+  }
+
+  const { date } = userState(userId);
+  if (date) {
+    setState(userId, { booking: { step: 'originProvince', date } });
+    return { type: 'text', text: `📅 ใช้วันที่ ${thaiDate(date)} ค่ะ\n\n🚍 เดินทางจากจังหวัดไหนคะ` };
+  }
   setState(userId, { booking: { step: 'date' } });
   return { type: 'text', text: '📅 เดินทางวันที่เท่าไหร่คะ' };
 }
@@ -142,6 +177,7 @@ function bookingSummary(booking) {
 🏁 ปลายทาง: ${booking.destinationProvince}
 ⏰ รอบ: ${booking.departureTime}
 📍 จุดขึ้น: ${booking.pickupPoint}
+📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
 🎟️ จำนวน: ${booking.seats} ที่นั่ง
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์: ${booking.phone || '-'}
@@ -158,6 +194,7 @@ function adminBookingText(booking, paidText = '') {
 🏁 จังหวัดปลายทาง: ${booking.destinationProvince}
 ⏰ เวลา: ${booking.departureTime}
 📍 จุดขึ้น: ${booking.pickupPoint}
+📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
 
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์โทร: ${booking.phone || '-'}
@@ -206,6 +243,11 @@ function handleBookingText(userId, text) {
 
   if (current.step === 'pickupPoint') {
     setState(userId, { booking: { ...current, step: 'seats', pickupPoint: value } });
+    return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
+  }
+
+  if (current.step === 'pickupSpecial') {
+    setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: value } });
     return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
   }
 
@@ -411,6 +453,7 @@ function result(userId, routeId, departureTime) {
   const dropoff = route.stops.find((stop) => stop.id === dropoffId);
   if (!route || !pickup || !dropoff) return { type: 'text', text: 'ข้อมูลไม่ครบ กรุณาเริ่มเช็กรอบรถใหม่ค่ะ' };
   const rideMinutes = dropoff.minutesFromOrigin - pickup.minutesFromOrigin;
+  setState(userId, { selectedRouteId: routeId, selectedDepartureTime: departureTime });
   return {
     type: 'text',
     text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\nรอบออกจาก${route.origin}: ${departureTime} น.\n📍 รถจะถึง ${pickup.name} ประมาณ ${addMinutes(departureTime, pickup.minutesFromOrigin)} น.\n🏁 ถึง ${dropoff.name} ประมาณ ${addMinutes(departureTime, dropoff.minutesFromOrigin)} น.\n⏱️ ใช้เวลาเดินทางประมาณ ${durationText(rideMinutes)}\n\nกรุณามารอรถก่อนเวลา 10–15 นาที\nต้องการจองที่นั่ง/สอบถามเพิ่มเติม กรุณาติดต่อแอดมิน`,
