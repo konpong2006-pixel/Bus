@@ -44,8 +44,6 @@ function routeTab(routeId) {
   return null;
 }
 
-const middlePickupIds = new Set(['เขาหินซ้อน', 'คลองรั้ง', 'กบินทร์บุรี', 'กบินบุรี'].map(normalizePlace));
-
 async function sheetRows(tabName, range) {
   return (await getBackendSheetValues(tabName, range)) ?? null;
 }
@@ -80,32 +78,17 @@ async function loadSheetData() {
     const tabName = routeTab(route.id);
     if (!tabName) return [];
     const rows = await sheetRows(tabName, 'A3:E200') ?? [];
-    const faresByKey = new Map();
-    const addFare = (pickupName, rawPrice) => {
-      const pickupId = normalizePlace(pickupName);
-      const dropoffId = normalizePlace(route.destination);
-      const price = parseNumber(rawPrice);
-      if (!pickupId || pickupId === dropoffId || !Number.isFinite(price) || price <= 0) return;
-      const key = `${route.id}:${pickupId}:${dropoffId}`;
-      const existing = faresByKey.get(key);
-      if (existing && existing.price >= price) return;
-      faresByKey.set(key, {
+    return rows
+      .filter((row) => row[0] && row[1] && row[2] !== '' && normalizeActive(row[3]))
+      .map(([pickupName, dropoffName, rawPrice]) => ({
         routeId: route.id,
-        pickupId,
-        dropoffId,
+        pickupId: normalizePlace(pickupName),
+        dropoffId: normalizePlace(dropoffName),
         pickupName: String(pickupName).trim(),
-        dropoffName: route.destination,
-        price,
+        dropoffName: String(dropoffName).trim(),
+        price: parseNumber(rawPrice),
         active: true
-      });
-    };
-
-    for (const [originPickup, zonePickup, rawPrice] of rows.filter((row) => row[0] && row[1] && row[2] !== '' && normalizeActive(row[3]))) {
-      if (normalizePlace(originPickup) === normalizePlace(route.origin)) addFare(route.origin, rawPrice);
-      if (middlePickupIds.has(normalizePlace(zonePickup))) addFare(zonePickup, rawPrice);
-    }
-
-    return [...faresByKey.values()]
+      }))
       .filter((fare) => Number.isFinite(fare.price) && fare.price > 0);
   }));
   const fares = fareGroups.flat();
