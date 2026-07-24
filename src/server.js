@@ -507,10 +507,21 @@ async function pickupChoices(userId, page = 0) {
 ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง`, options);
 }
 
-async function dropoffChoices(userId) {
+async function dropoffChoices(userId, page = 0) {
   const { pickupId } = userState(userId);
   const stops = await dropoffStops(pickupId);
-  return quick('เลือกปลายทางที่ต้องการเดินทางค่ะ\n\nระบบรับจองเฉพาะเดินทางไกลตามสายรถ ไม่รับจองระยะใกล้ค่ะ', chunk(stops.map(({ id, name }) => button(name, `action=dropoff&value=${id}`))));
+  const pageSize = 11;
+  const totalPages = Math.max(1, Math.ceil(stops.length / pageSize));
+  const currentPage = Math.min(Math.max(Number(page) || 0, 0), totalPages - 1);
+  const start = currentPage * pageSize;
+  const options = stops
+    .slice(start, start + pageSize)
+    .map(({ id, name }) => button(name, `action=dropoff&value=${id}`));
+  if (currentPage > 0) options.push(button('ย้อนกลับ', `action=dropoff_page&page=${currentPage - 1}`, 'ย้อนกลับ'));
+  if (currentPage < totalPages - 1) options.push(button('ถัดไป', `action=dropoff_page&page=${currentPage + 1}`, 'ถัดไป'));
+  return quick(`เลือกปลายทางที่ต้องการเดินทางค่ะ (${currentPage + 1}/${totalPages})
+
+ระบบรับจองเฉพาะเดินทางไกลตามสายรถ ไม่รับจองระยะใกล้ค่ะ`, options);
 }
 
 async function scheduleChoices(userId) {
@@ -562,6 +573,7 @@ async function handleEvent(event) {
     if (action === 'date') { setState(userId, { date: params.get('value') }); message = await pickupChoices(userId); }
     if (action === 'pickup_page') message = await pickupChoices(userId, params.get('page'));
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = await dropoffChoices(userId); }
+    if (action === 'dropoff_page') message = await dropoffChoices(userId, params.get('page'));
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = await scheduleChoices(userId); }
     if (action === 'schedule') message = await result(userId, params.get('route'), params.get('time'));
   }
