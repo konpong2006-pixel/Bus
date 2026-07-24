@@ -44,6 +44,8 @@ function routeTab(routeId) {
   return null;
 }
 
+const middlePickupIds = new Set(['เขาหินซ้อน', 'คลองรั้ง', 'กบินทร์บุรี', 'กบินบุรี'].map(normalizePlace));
+
 async function sheetRows(tabName, range) {
   return (await getBackendSheetValues(tabName, range)) ?? null;
 }
@@ -78,33 +80,32 @@ async function loadSheetData() {
     const tabName = routeTab(route.id);
     if (!tabName) return [];
     const rows = await sheetRows(tabName, 'A3:E200') ?? [];
-    return rows
-      .filter((row) => row[0] && row[1] && row[2] !== '' && normalizeActive(row[3]))
-      .flatMap(([originPickup, zonePickup, rawPrice]) => {
-        const price = parseNumber(rawPrice);
-        const destinationName = route.destination;
-        const candidates = [
-          String(originPickup).trim(),
-          String(zonePickup).trim()
-        ];
-        const seen = new Set();
-        return candidates
-          .filter((pickupName) => {
-            const id = normalizePlace(pickupName);
-            if (!id || id === normalizePlace(destinationName) || seen.has(id)) return false;
-            seen.add(id);
-            return true;
-          })
-          .map((pickupName) => ({
-            routeId: route.id,
-            pickupId: normalizePlace(pickupName),
-            dropoffId: normalizePlace(destinationName),
-            pickupName,
-            dropoffName: destinationName,
-            price,
-            active: true
-          }));
-      })
+    const faresByKey = new Map();
+    const addFare = (pickupName, rawPrice) => {
+      const pickupId = normalizePlace(pickupName);
+      const dropoffId = normalizePlace(route.destination);
+      const price = parseNumber(rawPrice);
+      if (!pickupId || pickupId === dropoffId || !Number.isFinite(price) || price <= 0) return;
+      const key = `${route.id}:${pickupId}:${dropoffId}`;
+      const existing = faresByKey.get(key);
+      if (existing && existing.price >= price) return;
+      faresByKey.set(key, {
+        routeId: route.id,
+        pickupId,
+        dropoffId,
+        pickupName: String(pickupName).trim(),
+        dropoffName: route.destination,
+        price,
+        active: true
+      });
+    };
+
+    for (const [originPickup, zonePickup, rawPrice] of rows.filter((row) => row[0] && row[1] && row[2] !== '' && normalizeActive(row[3]))) {
+      if (normalizePlace(originPickup) === normalizePlace(route.origin)) addFare(route.origin, rawPrice);
+      if (middlePickupIds.has(normalizePlace(zonePickup))) addFare(zonePickup, rawPrice);
+    }
+
+    return [...faresByKey.values()]
       .filter((fare) => Number.isFinite(fare.price) && fare.price > 0);
   }));
   const fares = fareGroups.flat();

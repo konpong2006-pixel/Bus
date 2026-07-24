@@ -500,13 +500,17 @@ async function pickupChoices(userId, page = 0) {
     .map(({ id, name }) => button(name, `action=pickup&value=${id}`));
   if (currentPage > 0) options.push(button('ย้อนกลับ', `action=pickup_page&page=${currentPage - 1}`, 'ย้อนกลับ'));
   if (currentPage < totalPages - 1) options.push(button('ถัดไป', `action=pickup_page&page=${currentPage + 1}`, 'ถัดไป'));
-  return quick(`เลือกจุดขึ้นรถ (${currentPage + 1}/${totalPages})`, options);
+  return quick(`เลือกจุดขึ้นรถ (${currentPage + 1}/${totalPages})
+
+ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ
+จุดกลางทาง เขาหินซ้อน / คลองรั้ง / กบินทร์บุรี ราคา 250 บาท
+ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง`, options);
 }
 
 async function dropoffChoices(userId) {
   const { pickupId } = userState(userId);
   const stops = await dropoffStops(pickupId);
-  return quick('เลือกจุดลงรถ', chunk(stops.map(({ id, name }) => button(name, `action=dropoff&value=${id}`))));
+  return quick('เลือกปลายทางที่ต้องการเดินทางค่ะ\n\nระบบรับจองเฉพาะเดินทางไกลตามสายรถ ไม่รับจองระยะใกล้ค่ะ', chunk(stops.map(({ id, name }) => button(name, `action=dropoff&value=${id}`))));
 }
 
 async function scheduleChoices(userId) {
