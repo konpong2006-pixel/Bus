@@ -28,6 +28,13 @@ function parseNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizeTime(value) {
+  const text = String(value ?? '').trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return text.slice(0, 5);
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+}
+
 function routeTab(routeId) {
   if (routeId === 'RY-KOR') return 'ราคา ระยอง-โคราช';
   if (routeId === 'KOR-RY') return 'ราคา โคราช-ระยอง';
@@ -105,11 +112,11 @@ async function loadSheetData() {
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
       if (!route) return null;
       return {
-        id: `${date}-${route.id}-${departureTime}`,
+        id: `${date}-${route.id}-${normalizeTime(departureTime)}`,
         date: String(date).slice(0, 10),
         routeId: route.id,
-        departureTime: String(departureTime).slice(0, 5),
-        arrivalTime: arrivalTime ? String(arrivalTime).slice(0, 5) : '',
+        departureTime: normalizeTime(departureTime),
+        arrivalTime: arrivalTime ? normalizeTime(arrivalTime) : '',
         status: String(status || '').trim(),
         seats: parseNumber(seats) || null,
         note: String(note || '').trim(),
@@ -126,9 +133,9 @@ async function loadSheetData() {
     .filter((row) => row[0] && row[1] && row[3] && row[4])
     .map(([routeName, departureTime, _order, stopName, arrivalTime]) => ({
       routeName: String(routeName).trim(),
-      departureTime: String(departureTime).slice(0, 5),
+      departureTime: normalizeTime(departureTime),
       stopName: String(stopName).trim(),
-      arrivalTime: String(arrivalTime).slice(0, 5)
+      arrivalTime: normalizeTime(arrivalTime)
     }));
 
   return { routes, schedules, fares, dayOpen, stopTimes, source: 'sheet' };
