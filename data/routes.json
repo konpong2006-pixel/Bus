@@ -13,6 +13,11 @@
         { "id": "bo-win", "name": "บ่อวิน", "minutesFromOrigin": 90 },
         { "id": "nava-nakhon", "name": "นวนคร", "minutesFromOrigin": 120 },
         { "id": "kabin", "name": "กบินทร์บุรี", "minutesFromOrigin": 240 },
+        { "id": "khlong-rang", "name": "คลองรั้ง", "minutesFromOrigin": 260 },
+        { "id": "khao-hin-son", "name": "เขาหินซ้อน", "minutesFromOrigin": 275 },
+        { "id": "wang-nam-khiao", "name": "วังน้ำเขียว", "minutesFromOrigin": 360 },
+        { "id": "km79", "name": "กม.79", "minutesFromOrigin": 400 },
+        { "id": "pak-thong-chai", "name": "ปักธงชัย", "minutesFromOrigin": 425 },
         { "id": "korat", "name": "โคราช", "minutesFromOrigin": 450 }
       ]
     },
@@ -23,8 +28,24 @@
       "stops": [
         { "id": "korat", "name": "โคราช", "minutesFromOrigin": 0 },
         { "id": "kabin", "name": "กบินทร์บุรี", "minutesFromOrigin": 85 },
+        { "id": "khlong-rang", "name": "คลองรั้ง", "minutesFromOrigin": 110 },
+        { "id": "khao-hin-son", "name": "เขาหินซ้อน", "minutesFromOrigin": 125 },
+        { "id": "sanam-chaikhet", "name": "สนามชัยเขต", "minutesFromOrigin": 165 },
+        { "id": "gateway", "name": "เกตเวย์", "minutesFromOrigin": 180 },
+        { "id": "noen-hin", "name": "เนินหิน", "minutesFromOrigin": 190 },
+        { "id": "plaeng-yao", "name": "แปลงยาว", "minutesFromOrigin": 200 },
+        { "id": "koh-pho", "name": "เกาะโพธิ์", "minutesFromOrigin": 220 },
+        { "id": "nong-samet", "name": "หนองเสม็ด", "minutesFromOrigin": 235 },
+        { "id": "nong-prue", "name": "หนองปรือ", "minutesFromOrigin": 250 },
+        { "id": "map-pu", "name": "มาบปู", "minutesFromOrigin": 275 },
+        { "id": "pak-ruam", "name": "ปากร่วม", "minutesFromOrigin": 300 },
         { "id": "bo-win", "name": "บ่อวิน", "minutesFromOrigin": 330 },
+        { "id": "sak-ngaew", "name": "ซากแง้ว", "minutesFromOrigin": 360 },
+        { "id": "khao-mai-kaew", "name": "เขาไม้แก้ว", "minutesFromOrigin": 370 },
+        { "id": "km10", "name": "ก.ม.10", "minutesFromOrigin": 380 },
         { "id": "ban-chang", "name": "บ้านฉาง", "minutesFromOrigin": 395 },
+        { "id": "huai-pong", "name": "ห้วยโป่ง", "minutesFromOrigin": 405 },
+        { "id": "map-ta-phut", "name": "มาบตะพุด", "minutesFromOrigin": 410 },
         { "id": "rayong", "name": "ระยอง", "minutesFromOrigin": 420 }
       ]
     }

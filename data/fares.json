@@ -1,0 +1,31 @@
+{
+  "fares": [
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "korat", "price": 350 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "pak-thong-chai", "price": 350 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "km79", "price": 350 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "wang-nam-khiao", "price": 350 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "kabin", "price": 250 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "khlong-rang", "price": 250 },
+    { "routeId": "RY-KOR", "pickupId": "rayong", "dropoffId": "khao-hin-son", "price": 250 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "rayong", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "map-ta-phut", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "huai-pong", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "ban-chang", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "km10", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "khao-mai-kaew", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "sak-ngaew", "price": 350 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "bo-win", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "pak-ruam", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "map-pu", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "nong-prue", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "nong-samet", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "koh-pho", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "plaeng-yao", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "noen-hin", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "gateway", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "sanam-chaikhet", "price": 300 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "khao-hin-son", "price": 250 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "khlong-rang", "price": 250 },
+    { "routeId": "KOR-RY", "pickupId": "korat", "dropoffId": "kabin", "price": 250 }
+  ]
+}

@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
-import { getRoutes, getRoute, routesForJourney, schedulesFor, hasSchedulesOnDate } from './data.js';
+import { dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor, stopArrivalTime } from './data.js';
+import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
 import { addMinutes, bangkokDate, bangkokHour, durationText, thaiDate } from './time.js';
 
@@ -110,11 +111,11 @@ function sourceIdMessage(event, text) {
   return null;
 }
 
-function selectedTripBooking(userId) {
+async function selectedTripBooking(userId) {
   const { date, pickupId, dropoffId, selectedRouteId, selectedDepartureTime } = userState(userId);
   if (!date || !pickupId || !dropoffId || !selectedRouteId || !selectedDepartureTime) return null;
 
-  const route = getRoute(selectedRouteId);
+  const route = await getRoute(selectedRouteId);
   const pickup = route?.stops.find((stop) => stop.id === pickupId);
   const dropoff = route?.stops.find((stop) => stop.id === dropoffId);
   if (!route || !pickup || !dropoff) return null;
@@ -127,12 +128,14 @@ function selectedTripBooking(userId) {
     departureTime: selectedDepartureTime,
     pickupPoint: pickup.name,
     dropoffPoint: dropoff.name,
-    routeId: selectedRouteId
+    routeId: selectedRouteId,
+    pickupId,
+    dropoffId
   };
 }
 
-function askBookingDate(userId) {
-  const selectedBooking = selectedTripBooking(userId);
+async function askBookingDate(userId) {
+  const selectedBooking = await selectedTripBooking(userId);
   if (selectedBooking) {
     setState(userId, { booking: selectedBooking });
     return {
@@ -169,7 +172,38 @@ function parseContact(text) {
   return { name: name || text.trim(), phone };
 }
 
+function moneyText(amount) {
+  const value = Number(amount);
+  return Number.isFinite(value) ? `${value.toLocaleString('th-TH')} บาท` : null;
+}
+
+function lockedPaymentAmount(booking) {
+  const value = Number(booking?.totalAmount ?? booking?.amount);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function testPricePerSeat() {
+  const value = Number(process.env.BOOKING_TEST_PRICE_PER_SEAT);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+async function withLockedPrice(booking) {
+  let fare = null;
+  try {
+    fare = await fareForBookingFromSheet(booking);
+  } catch (error) {
+    console.error(error);
+  }
+  if (fare == null && booking.routeId && booking.pickupId && booking.dropoffId) {
+    fare = await fareForJourney(booking.routeId, booking.pickupId, booking.dropoffId);
+  }
+  const pricePerSeat = fare ?? testPricePerSeat();
+  if (!pricePerSeat || !booking.seats) return booking;
+  return { ...booking, pricePerSeat, totalAmount: pricePerSeat * booking.seats };
+}
+
 function bookingSummary(booking) {
+  const lockedAmount = lockedPaymentAmount(booking);
   return `กรุณาตรวจสอบข้อมูลค่ะ
 
 📅 วันที่: ${thaiDate(booking.date)}
@@ -181,9 +215,9 @@ function bookingSummary(booking) {
 🎟️ จำนวน: ${booking.seats} ที่นั่ง
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์: ${booking.phone || '-'}
-💰 ยอดชำระ: รอแอดมินยืนยัน
+💰 ยอดชำระ: ${moneyText(lockedAmount) || 'รอแอดมินยืนยัน'}
 
-หากถูกต้อง กรุณาโอนเงินแล้วส่งสลิปในแชทนี้ค่ะ`;
+${lockedAmount ? 'กรุณาโอนตามยอดนี้เท่านั้น แล้วส่งสลิปในแชทนี้ค่ะ' : 'หากถูกต้อง กรุณาโอนเงินแล้วส่งสลิปในแชทนี้ค่ะ'}`;
 }
 
 function adminBookingText(booking, paidText = '') {
@@ -209,7 +243,7 @@ function adminBookingText(booking, paidText = '') {
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
 
-function handleBookingText(userId, text) {
+async function handleBookingText(userId, text) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
 
@@ -254,13 +288,13 @@ function handleBookingText(userId, text) {
   if (current.step === 'seats') {
     const seats = parseSeats(value);
     if (!seats) return bookingAsk('🎟️ ขอจำนวนที่นั่งเป็นตัวเลขค่ะ เช่น 1 หรือ 2');
-    setState(userId, { booking: { ...current, step: 'contact', seats } });
+    setState(userId, { booking: await withLockedPrice({ ...current, step: 'contact', seats }) });
     return bookingAsk('👤 ขอชื่อผู้จองและเบอร์โทรค่ะ');
   }
 
   if (current.step === 'contact') {
     const contact = parseContact(value);
-    const booking = { ...current, step: 'awaiting_slip', customerName: contact.name, phone: contact.phone };
+    const booking = await withLockedPrice({ ...current, step: 'awaiting_slip', customerName: contact.name, phone: contact.phone });
     setState(userId, { booking });
     const summary = { type: 'text', text: bookingSummary(booking) };
     return withPaymentQr(summary);
@@ -269,14 +303,14 @@ function handleBookingText(userId, text) {
   return null;
 }
 
-function dateMessage(userId, text) {
-  const booking = handleBookingText(userId, text);
+async function dateMessage(userId, text) {
+  const booking = await handleBookingText(userId, text);
   if (booking) return booking;
   if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
   const date = parseTypedDate(text);
   if (!date) return unclearDateMessage();
-  if (isInBookingWindow(date) || hasSchedulesOnDate(date)) {
+  if (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date))) {
     setState(userId, { date });
     return pickupChoices(userId);
   }
@@ -384,25 +418,56 @@ function slipOkErrorText(result) {
   return known[result.code] ?? `ตรวจสลิปไม่ผ่านค่ะ กรุณาส่งสลิปใหม่ หรือติดต่อแอดมิน\nรหัส: ${result.code ?? '-'} ${result.message ?? ''}`;
 }
 
+function slipOkUnavailableText() {
+  return 'ได้รับสลิปแล้วค่ะ\n\nขณะนี้ระบบตรวจเช็คเงินอัตโนมัติมีปัญหา หรือโควต้าการตรวจสลิปหมดชั่วคราว\nโปรดรอแอดมินตรวจสอบและออกตั๋วให้นะคะ';
+}
+
+function isSlipOkSystemIssue(result) {
+  const message = String(result.message ?? '').toLowerCase();
+  return [401, 402, 403, 429].includes(result.status)
+    || result.status >= 500
+    || /quota|limit|credit|balance|package|หมด|โควต|เครดิต|แพ็กเกจ/.test(message);
+}
+
 async function slipMessage(event) {
   if (!slipOkConfigured()) {
-    return { type: 'text', text: 'ได้รับรูปสลิปแล้วค่ะ แต่ระบบตรวจสลิปอัตโนมัติยังไม่ได้ตั้งค่า กรุณารอแอดมินตรวจสอบให้นะคะ' };
+    return { type: 'text', text: slipOkUnavailableText() };
   }
 
   try {
     const file = await downloadLineContent(event.message.id);
-    const result = await verifySlipImage(file.buffer, { contentType: file.contentType });
-    if (!result.ok) return { type: 'text', text: slipOkErrorText(result) };
+    const booking = userState(event.source.userId).booking;
+    const lockedAmount = booking?.step === 'awaiting_slip' ? lockedPaymentAmount(booking) : null;
+    const result = await verifySlipImage(file.buffer, { contentType: file.contentType, amount: lockedAmount });
+    if (!result.ok) {
+      if (isSlipOkSystemIssue(result)) {
+        await pushAdminText(`มีลูกค้าส่งสลิป แต่ระบบตรวจเช็คเงินอัตโนมัติมีปัญหา/โควต้าอาจหมด\nกรุณาตรวจสลิปและออกตั๋วให้ลูกค้าด้วยค่ะ\nสถานะ SlipOK: ${result.status ?? '-'} ${result.code ?? '-'} ${result.message ?? ''}`);
+        return { type: 'text', text: slipOkUnavailableText() };
+      }
+      return { type: 'text', text: slipOkErrorText(result) };
+    }
 
     const amount = slipAmount(result.data);
     const paidText = amount == null ? '' : `\nยอดชำระ: ${amount.toLocaleString('th-TH')} บาท`;
     const receiverText = slipReceiver(result.data) ? `\nผู้รับเงิน: ${slipReceiver(result.data)}` : '';
     const dateText = slipDate(result.data) ? `\nเวลาตามสลิป: ${slipDate(result.data)}` : '';
-    const booking = userState(event.source.userId).booking;
 
     if (booking?.step === 'awaiting_slip') {
       const adminPaidText = amount == null ? 'ตรวจผ่าน SlipOK' : `${amount.toLocaleString('th-TH')} บาท`;
       await pushAdminText(adminBookingText(booking, adminPaidText));
+      try {
+        const sheetResult = await appendPaidBooking({
+          booking,
+          paidAmount: amount,
+          note: `ตรวจผ่าน SlipOK${amount == null ? '' : ` / ยอดชำระ ${amount.toLocaleString('th-TH')} บาท`}`
+        });
+        if (sheetResult.skipped) {
+          await pushAdminText('หมายเหตุ: ยังไม่ได้บันทึกรายการลง Google Sheet เพราะยังไม่ได้ตั้งค่า Google Sheets env');
+        }
+      } catch (sheetError) {
+        console.error(sheetError);
+        await pushAdminText(`บันทึกรายการลง Google Sheet ไม่สำเร็จ\nกรุณาจดรายการนี้เองก่อนค่ะ\n${sheetError.message ?? sheetError}`);
+      }
       setState(event.source.userId, { booking: { ...booking, step: 'paid' } });
     } else {
       await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
@@ -414,49 +479,52 @@ async function slipMessage(event) {
     };
   } catch (error) {
     console.error(error);
-    return { type: 'text', text: 'ขออภัยค่ะ ระบบตรวจสลิปมีปัญหาชั่วคราว กรุณาลองส่งสลิปใหม่อีกครั้ง หรือติดต่อแอดมินค่ะ' };
+    await pushAdminText(`มีลูกค้าส่งสลิป แต่ระบบตรวจเช็คเงินอัตโนมัติเกิดข้อผิดพลาด\nกรุณาตรวจสลิปและออกตั๋วให้ลูกค้าด้วยค่ะ\n${error.message ?? error}`);
+    return { type: 'text', text: slipOkUnavailableText() };
   }
 }
 
-function pickupChoices(userId) {
-  const seen = new Map();
-  for (const route of getRoutes()) for (const stop of route.stops) seen.set(stop.id, stop.name);
-  return quick('เลือกจุดขึ้นรถ', chunk([...seen].map(([id, name]) => button(name, `action=pickup&value=${id}`))));
+async function pickupChoices(userId) {
+  const stops = await pickupStops();
+  return quick('เลือกจุดขึ้นรถ', chunk(stops.map(({ id, name }) => button(name, `action=pickup&value=${id}`))));
 }
 
-function dropoffChoices(userId) {
+async function dropoffChoices(userId) {
   const { pickupId } = userState(userId);
-  const stops = new Map();
-  for (const route of getRoutes()) {
-    const at = route.stops.findIndex((stop) => stop.id === pickupId);
-    if (at >= 0) for (const stop of route.stops.slice(at + 1)) stops.set(stop.id, stop.name);
-  }
-  return quick('เลือกจุดลงรถ', chunk([...stops].map(([id, name]) => button(name, `action=dropoff&value=${id}`))));
+  const stops = await dropoffStops(pickupId);
+  return quick('เลือกจุดลงรถ', chunk(stops.map(({ id, name }) => button(name, `action=dropoff&value=${id}`))));
 }
 
-function scheduleChoices(userId) {
+async function scheduleChoices(userId) {
   const { date, pickupId, dropoffId } = userState(userId);
-  const routes = routesForJourney(pickupId, dropoffId);
-  const options = routes.flatMap((route) => schedulesFor(route.id, date).map((schedule) => button(
-    `${route.origin} ${schedule.departureTime}`,
-    `action=schedule&route=${route.id}&time=${schedule.departureTime}`,
-    `${route.name} รอบ ${schedule.departureTime}`
-  )));
+  const routes = await routesForJourney(pickupId, dropoffId);
+  const nested = await Promise.all(routes.map(async (route) => {
+    const schedules = await schedulesFor(route.id, date);
+    return schedules.map((schedule) => button(
+      `${route.origin} ${schedule.departureTime}`,
+      `action=schedule&route=${route.id}&time=${schedule.departureTime}`,
+      `${route.name} รอบ ${schedule.departureTime}`
+    ));
+  }));
+  const options = nested.flat();
   if (!options.length) return { type: 'text', text: `ไม่พบรอบรถในวันที่ ${thaiDate(date)} สำหรับเส้นทางนี้ค่ะ\nกรุณาติดต่อแอดมินเพื่อสอบถามเพิ่มเติม` };
   return quick(`เลือกรอบรถ\nวันที่ ${thaiDate(date)}`, chunk(options));
 }
 
-function result(userId, routeId, departureTime) {
+async function result(userId, routeId, departureTime) {
   const { date, pickupId, dropoffId } = userState(userId);
-  const route = getRoute(routeId);
+  const route = await getRoute(routeId);
+  if (!route) return { type: 'text', text: 'ข้อมูลไม่ครบ กรุณาเริ่มเช็กรอบรถใหม่ค่ะ' };
   const pickup = route.stops.find((stop) => stop.id === pickupId);
   const dropoff = route.stops.find((stop) => stop.id === dropoffId);
-  if (!route || !pickup || !dropoff) return { type: 'text', text: 'ข้อมูลไม่ครบ กรุณาเริ่มเช็กรอบรถใหม่ค่ะ' };
-  const rideMinutes = dropoff.minutesFromOrigin - pickup.minutesFromOrigin;
+  if (!pickup || !dropoff) return { type: 'text', text: 'ข้อมูลไม่ครบ กรุณาเริ่มเช็กรอบรถใหม่ค่ะ' };
+  const pickupTime = await stopArrivalTime(routeId, departureTime, pickup.name) ?? addMinutes(departureTime, pickup.minutesFromOrigin);
+  const dropoffTime = await stopArrivalTime(routeId, departureTime, dropoff.name) ?? addMinutes(departureTime, dropoff.minutesFromOrigin);
+  const rideMinutes = Math.max(0, (dropoff.minutesFromOrigin - pickup.minutesFromOrigin) * 15);
   setState(userId, { selectedRouteId: routeId, selectedDepartureTime: departureTime });
   return {
     type: 'text',
-    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\nรอบออกจาก${route.origin}: ${departureTime} น.\n📍 รถจะถึง ${pickup.name} ประมาณ ${addMinutes(departureTime, pickup.minutesFromOrigin)} น.\n🏁 ถึง ${dropoff.name} ประมาณ ${addMinutes(departureTime, dropoff.minutesFromOrigin)} น.\n⏱️ ใช้เวลาเดินทางประมาณ ${durationText(rideMinutes)}\n\nกรุณามารอรถก่อนเวลา 10–15 นาที\nต้องการจองที่นั่ง/สอบถามเพิ่มเติม กรุณาติดต่อแอดมิน`,
+    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\nรอบออกจาก${route.origin}: ${departureTime} น.\n📍 รถจะถึง ${pickup.name} ประมาณ ${pickupTime} น.\n🏁 ถึง ${dropoff.name} ประมาณ ${dropoffTime} น.\n⏱️ ใช้เวลาเดินทางประมาณ ${durationText(rideMinutes)}\n\nกรุณามารอรถก่อนเวลา 10–15 นาที\nต้องการจองที่นั่ง/สอบถามเพิ่มเติม กรุณาติดต่อแอดมิน`,
     quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
 }
@@ -467,19 +535,19 @@ async function handleEvent(event) {
   let message;
   if (event.type === 'follow') message = start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    message = sourceIdMessage(event, event.message.text) ?? dateMessage(userId, event.message.text);
+    message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
   } else if (event.type === 'message' && event.message.type === 'image') {
     message = await slipMessage(event);
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = start(userId);
-    if (action === 'start_booking') message = askBookingDate(userId);
+    if (action === 'start_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
-    if (action === 'date') { setState(userId, { date: params.get('value') }); message = pickupChoices(userId); }
-    if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = dropoffChoices(userId); }
-    if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = scheduleChoices(userId); }
-    if (action === 'schedule') message = result(userId, params.get('route'), params.get('time'));
+    if (action === 'date') { setState(userId, { date: params.get('value') }); message = await pickupChoices(userId); }
+    if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = await dropoffChoices(userId); }
+    if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = await scheduleChoices(userId); }
+    if (action === 'schedule') message = await result(userId, params.get('route'), params.get('time'));
   }
   if (!message) message = { type: 'text', text: 'พิมพ์ข้อความใด ๆ เพื่อเริ่มเช็กรอบรถค่ะ' };
   await fetch('https://api.line.me/v2/bot/message/reply', {
