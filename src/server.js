@@ -182,9 +182,10 @@ async function selectedTripBooking(userId) {
   if (!date || !pickupId || !dropoffId || !selectedRouteId || !selectedDepartureTime) return null;
 
   const route = await getRoute(selectedRouteId);
+  const schedule = (await schedulesFor(selectedRouteId, date)).find((item) => item.departureTime === selectedDepartureTime);
   const pickup = route?.stops.find((stop) => stop.id === pickupId);
   const dropoff = route?.stops.find((stop) => stop.id === dropoffId);
-  if (!route || !pickup || !dropoff) return null;
+  if (!route || !schedule || !pickup || !dropoff) return null;
 
   return {
     step: 'pickupSpecial',
@@ -196,7 +197,8 @@ async function selectedTripBooking(userId) {
     dropoffPoint: dropoff.name,
     routeId: selectedRouteId,
     pickupId,
-    dropoffId
+    dropoffId,
+    driverPhone: schedule.driverPhone || ''
   };
 }
 
@@ -315,7 +317,7 @@ function adminBookingText(booking, paidText = '') {
 🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
 💰 ยอดโอนเงิน: ${paidText || 'ตรวจผ่าน SlipOK'}
 
-☎️ เบอร์คนขับ: รอแจ้ง
+☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
 
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
@@ -335,7 +337,7 @@ function customerTicketText(booking, paidText = '') {
 🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
 💰 ชำระเงิน: ${paidText || moneyText(lockedPaymentAmount(booking)) || 'ตรวจผ่าน SlipOK'}
 
-☎️ เบอร์คนขับ: รอแจ้ง
+☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
 
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;

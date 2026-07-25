@@ -18,6 +18,23 @@ function normalizeActive(value) {
   return String(value ?? 'ใช่').trim() !== 'ไม่';
 }
 
+function normalizeScheduleStatus(value) {
+  return String(value ?? '').replace(/\s+/g, '').trim();
+}
+
+function scheduleConfirmed(value) {
+  return normalizeScheduleStatus(value) === 'ออกแน่นอน';
+}
+
+function columnIndex(headers, names, fallback) {
+  const normalized = headers.map((header) => String(header ?? '').replace(/\s+/g, '').trim());
+  for (const name of names) {
+    const index = normalized.indexOf(String(name).replace(/\s+/g, '').trim());
+    if (index >= 0) return index;
+  }
+  return fallback;
+}
+
 function normalizePlace(value) {
   return String(value ?? '').replace(/\s+/g, '').replace(/\./g, '').trim();
 }
@@ -106,10 +123,27 @@ async function loadSheetData() {
     return { ...route, stops };
   });
 
-  const scheduleRows = await sheetRows('รอบรถ', 'A3:H500') ?? [];
+  const scheduleHeaders = (await sheetRows('รอบรถ', 'A2:K2') ?? [])[0] ?? [];
+  const scheduleRows = await sheetRows('รอบรถ', 'A3:K500') ?? [];
+  const dateIndex = columnIndex(scheduleHeaders, ['วันที่'], 0);
+  const routeIndex = columnIndex(scheduleHeaders, ['เส้นทาง'], 1);
+  const departureIndex = columnIndex(scheduleHeaders, ['เวลาออกจากต้นทาง'], 2);
+  const arrivalIndex = columnIndex(scheduleHeaders, ['เวลาถึงปลายทาง'], 3);
+  const statusIndex = columnIndex(scheduleHeaders, ['สถานะรอบ'], 5);
+  const seatsIndex = columnIndex(scheduleHeaders, ['จำนวนที่นั่ง'], 6);
+  const noteIndex = columnIndex(scheduleHeaders, ['หมายเหตุ'], 7);
+  const driverPhoneIndex = columnIndex(scheduleHeaders, ['เบอร์คนขับ', 'โทรคนขับ', 'เบอร์โทรคนขับ'], 8);
   const schedules = scheduleRows
-    .filter((row) => row[0] && row[1] && row[2] && normalizeActive(row[4]))
-    .map(([date, routeName, departureTime, arrivalTime, _active, status, seats, note]) => {
+    .filter((row) => row[dateIndex] && row[routeIndex] && row[departureIndex] && scheduleConfirmed(row[statusIndex]))
+    .map((row) => {
+      const date = row[dateIndex];
+      const routeName = row[routeIndex];
+      const departureTime = row[departureIndex];
+      const arrivalTime = row[arrivalIndex];
+      const status = row[statusIndex];
+      const seats = row[seatsIndex];
+      const note = row[noteIndex];
+      const driverPhone = row[driverPhoneIndex];
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
       if (!route) return null;
       return {
@@ -121,6 +155,7 @@ async function loadSheetData() {
         status: String(status || '').trim(),
         seats: parseNumber(seats) || null,
         note: String(note || '').trim(),
+        driverPhone: String(driverPhone || '').trim(),
         active: true
       };
     })
