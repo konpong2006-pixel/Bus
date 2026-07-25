@@ -787,9 +787,6 @@ async function dropoffChoices(userId, page = 0) {
   if (currentPage < totalPages - 1) options.push(button('ดูปลายทางเพิ่ม', `action=dropoff_page&page=${currentPage + 1}`, 'ดูปลายทางเพิ่ม'));
   return quick(`เลือกปลายทางที่ต้องการเดินทางค่ะ 🏁
 
-ℹ️ ระบบรับจองเฉพาะเดินทางไกลตามสายรถค่ะ
-⚠️ ไม่รับจองระยะใกล้
-
 ถ้าไม่เห็นป้ายที่ต้องการ สามารถพิมพ์ชื่อจุดลงได้เลยค่ะ`, options);
 }
 
