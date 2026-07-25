@@ -22,20 +22,42 @@ function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
 function cleanCustomerText(text) {
   return normaliseThaiDigits(String(text ?? '').toLowerCase())
-    .replace(/[🙏😊😄😃🙂🥰😍❤️💯✅]/g, '')
-    .replace(/(ค่ะ|คะ|ครับ|คับ|ค้าบ|จ้า|จ๊ะ|จ๋า|ฮะ|ฮ้ะ|นะ|น้า|น่ะ|เด้อ|จ้าา|ค่ะะ)+/g, '')
+    .replace(/[🙏😊😄😃🙂🥰😍❤️💯✅👌👍✨⭐️]/g, '')
+    .replace(/(ค่ะ|คะ|คร้าบ|ครับ|คับ|ค้าบ|จ้า|จ๊ะ|จ๋า|ฮะ|ฮ้ะ|นะ|น้า|น่ะ|เด้อ|จ้าา|ค่ะะ|ค่า|คร่า|งับ|งับบ|ฮับ)+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 function normalizePlaceText(text) {
   return cleanCustomerText(text)
-    .replace(/อยาก|ต้องการ|ขอ|ไป|ลง|ขึ้น|รถ|ที่|ตรง/g, '')
-    .replace(/โคราข|โคราด/g, 'โคราช')
-    .replace(/กบินบุรี|กบินฯ/g, 'กบินทร์บุรี')
-    .replace(/บขส\.?ชลบุรี/g, 'ชลบุรี')
+    .replace(/อยาก|ต้องการ|สอบถาม|รบกวน|จอง|ซื้อตั๋ว|ตั๋ว|ขอ|ไป|ลง|ขึ้น|รถ|ที่|ตรง|จาก|ปลายทาง|ต้นทาง|รอบ|เวลา|กี่โมง/g, '')
+    .replace(/นครราชสีมา|โคราข|โคราด|โคราชช/g, 'โคราช')
+    .replace(/ระยองง/g, 'ระยอง')
+    .replace(/ชลบรี|ชลฯ/g, 'ชลบุรี')
+    .replace(/กบินทร์?บุรี|กบินฯ|กระบิน|กบิน/g, 'กบินทร์บุรี')
+    .replace(/บขส\.?ชลบุรี|บขสชล/g, 'ชลบุรี')
+    .replace(/ก\.?ม\.?79/g, 'กม79')
+    .replace(/ก\.?ม\.?10/g, 'กม10')
+    .replace(/บ่อวินน์|บ่อวินน/g, 'บ่อวิน')
     .replace(/\s+/g, '')
     .replace(/\./g, '')
     .trim();
+}
+
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return 2;
+  const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return dp[a.length][b.length];
 }
 
 function isoDate(year, month, day) {
@@ -66,10 +88,20 @@ function dateFromDay(day, text) {
   return isoDate(year, month <= 12 ? month : 1, day);
 }
 
+function relativeDate(days) {
+  const date = new Date(`${bangkokDate()}T12:00:00+07:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function parseTypedDate(text) {
   const value = cleanCustomerText(text);
   const today = bangkokDate();
   const [currentYear] = today.split('-').map(Number);
+
+  if (/(^|[^ก-ฮa-z0-9])(วันนี้|วันนี่|วนนี่)(?=$|[^ก-ฮa-z0-9])/.test(value)) return relativeDate(0);
+  if (/(^|[^ก-ฮa-z0-9])(พรุ่งนี้|พรุ้งนี้|พน\.?|พรุ่งนี้เช้า|พรุ่งนี้บ่าย|พรุ่งนี้เย็น)(?=$|[^ก-ฮa-z0-9])/.test(value)) return relativeDate(1);
+  if (/(^|[^ก-ฮa-z0-9])(มะรืน|มะรืนนี้|มรืน)(?=$|[^ก-ฮa-z0-9])/.test(value)) return relativeDate(2);
 
   let match = value.match(/(\d{4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})/);
   if (match) return isoDate(Number(match[1]), Number(match[2]), Number(match[3]));
@@ -348,6 +380,8 @@ async function handleBookingText(userId, text) {
 async function dateMessage(userId, text) {
   const booking = await handleBookingText(userId, text);
   if (booking) return booking;
+  const inferred = await inferJourneyFromText(userId, text);
+  if (inferred) return inferred;
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
   if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
@@ -364,6 +398,38 @@ async function dateMessage(userId, text) {
     return pickupChoices(userId);
   }
   return bookingContact();
+}
+
+async function inferJourneyFromText(userId, text) {
+  const current = userState(userId);
+  const date = parseTypedDate(text) ?? current.date;
+  const pickupCandidates = extractStopMentions(await pickupStops(), text);
+  let pickup = current.pickupId
+    ? (await pickupStops()).find((stop) => stop.id === current.pickupId)
+    : pickupCandidates[0];
+  if (!pickup && current.pendingPickupId) {
+    pickup = (await pickupStops()).find((stop) => stop.id === current.pendingPickupId);
+  }
+
+  if (!date || !pickup) return null;
+
+  const dropoffCandidates = extractStopMentions(await dropoffStops(pickup.id), text)
+    .filter((stop) => stop.id !== pickup.id);
+  const dropoff = current.dropoffId
+    ? (await dropoffStops(pickup.id)).find((stop) => stop.id === current.dropoffId)
+    : dropoffCandidates[0];
+
+  if (dropoff && (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date)))) {
+    setState(userId, { date, pickupId: pickup.id, dropoffId: dropoff.id, pendingPickupId: null, flowStep: 'schedule' });
+    return scheduleChoices(userId);
+  }
+
+  if (!current.date && pickupCandidates.length) {
+    setState(userId, { date, pickupId: pickup.id, pendingPickupId: null, flowStep: 'dropoff' });
+    return dropoffChoices(userId);
+  }
+
+  return null;
 }
 
 async function typedStopChoice(userId, text) {
@@ -397,15 +463,43 @@ async function typedStopChoice(userId, text) {
 }
 
 async function matchStop(stops, text) {
-  const value = normalizePlaceText(text);
-  if (!value) return null;
-  const exact = stops.find((stop) => normalizePlaceText(stop.name) === value);
-  if (exact) return exact;
-  const matches = stops.filter((stop) => {
-    const name = normalizePlaceText(stop.name);
-    return value.includes(name) || name.includes(value);
-  });
+  const matches = extractStopMentions(stops, text);
   return matches.length === 1 ? matches[0] : null;
+}
+
+function extractStopMentions(stops, text) {
+  const value = normalizePlaceText(text);
+  if (!value) return [];
+  const scored = [];
+  for (const stop of stops) {
+    const name = normalizePlaceText(stop.name);
+    if (!name) continue;
+    if (value === name) {
+      scored.push({ stop, index: 0, score: 1000 + name.length });
+      continue;
+    }
+    const index = value.indexOf(name);
+    if (index >= 0) {
+      scored.push({ stop, index, score: 800 + name.length });
+      continue;
+    }
+    if (name.includes(value) && value.length >= 3) {
+      scored.push({ stop, index: 0, score: 500 + value.length });
+      continue;
+    }
+    if (value.length >= 3 && name.length >= 3 && editDistance(value, name) <= 1) {
+      scored.push({ stop, index: 0, score: 350 });
+    }
+  }
+  const seen = new Set();
+  return scored
+    .sort((a, b) => a.index - b.index || b.score - a.score)
+    .filter(({ stop }) => {
+      if (seen.has(stop.id)) return false;
+      seen.add(stop.id);
+      return true;
+    })
+    .map(({ stop }) => stop);
 }
 
 async function unclearDateMessage() {
