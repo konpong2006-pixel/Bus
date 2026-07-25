@@ -20,6 +20,14 @@ const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 function chunk(items, size = 13) { return items.slice(0, size); }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
+function normalizePlaceText(text) {
+  return normaliseThaiDigits(text)
+    .replace(/ค่ะ|คะ|ครับ|คับ|จ้า|จ๊ะ|นะ|น้า/g, '')
+    .replace(/อยาก|ต้องการ|ขอ|ไป|ลง|ขึ้น|รถ|ที่|ตรง/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\./g, '')
+    .trim();
+}
 
 function isoDate(year, month, day) {
   const date = new Date(Date.UTC(year, month - 1, day, 12));
@@ -310,6 +318,8 @@ async function handleBookingText(userId, text) {
 async function dateMessage(userId, text) {
   const booking = await handleBookingText(userId, text);
   if (booking) return booking;
+  const typedChoice = await typedStopChoice(userId, text);
+  if (typedChoice) return typedChoice;
   if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
   const date = parseTypedDate(text);
@@ -319,6 +329,35 @@ async function dateMessage(userId, text) {
     return pickupChoices(userId);
   }
   return bookingContact();
+}
+
+async function typedStopChoice(userId, text) {
+  const current = userState(userId);
+  if (current.date && !current.pickupId) {
+    const pickup = await matchStop(await pickupStops(), text);
+    if (!pickup) return null;
+    setState(userId, { pickupId: pickup.id });
+    return dropoffChoices(userId);
+  }
+  if (current.date && current.pickupId && !current.dropoffId) {
+    const dropoff = await matchStop(await dropoffStops(current.pickupId), text);
+    if (!dropoff) return null;
+    setState(userId, { dropoffId: dropoff.id });
+    return scheduleChoices(userId);
+  }
+  return null;
+}
+
+async function matchStop(stops, text) {
+  const value = normalizePlaceText(text);
+  if (!value) return null;
+  const exact = stops.find((stop) => normalizePlaceText(stop.name) === value);
+  if (exact) return exact;
+  const matches = stops.filter((stop) => {
+    const name = normalizePlaceText(stop.name);
+    return value.includes(name) || name.includes(value);
+  });
+  return matches.length === 1 ? matches[0] : null;
 }
 
 async function unclearDateMessage() {
@@ -500,11 +539,12 @@ async function pickupChoices(userId, page = 0) {
     .map(({ id, name }) => button(name, `action=pickup&value=${id}`));
   if (currentPage > 0) options.push(button('ย้อนกลับ', `action=pickup_page&page=${currentPage - 1}`, 'ย้อนกลับ'));
   if (currentPage < totalPages - 1) options.push(button('ถัดไป', `action=pickup_page&page=${currentPage + 1}`, 'ถัดไป'));
-  return quick(`เลือกจุดขึ้นรถ (${currentPage + 1}/${totalPages})
+  return quick(`เลือกจุดขึ้นรถค่ะ 🚍
 
-ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ
-จุดกลางทาง เขาหินซ้อน / คลองรั้ง / กบินทร์บุรี ราคา 250 บาท
-ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง`, options);
+ℹ️ ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ
+⚠️ ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง
+
+กรุณากดเลือกจุดขึ้น หรือพิมพ์ชื่อจุดขึ้นได้เลยค่ะ`, options);
 }
 
 async function dropoffChoices(userId, page = 0) {
@@ -518,10 +558,13 @@ async function dropoffChoices(userId, page = 0) {
     .slice(start, start + pageSize)
     .map(({ id, name }) => button(name, `action=dropoff&value=${id}`));
   if (currentPage > 0) options.push(button('ย้อนกลับ', `action=dropoff_page&page=${currentPage - 1}`, 'ย้อนกลับ'));
-  if (currentPage < totalPages - 1) options.push(button('ถัดไป', `action=dropoff_page&page=${currentPage + 1}`, 'ถัดไป'));
-  return quick(`เลือกปลายทางที่ต้องการเดินทางค่ะ (${currentPage + 1}/${totalPages})
+  if (currentPage < totalPages - 1) options.push(button('ดูปลายทางเพิ่ม', `action=dropoff_page&page=${currentPage + 1}`, 'ดูปลายทางเพิ่ม'));
+  return quick(`เลือกปลายทางที่ต้องการเดินทางค่ะ 🏁
 
-ระบบรับจองเฉพาะเดินทางไกลตามสายรถ ไม่รับจองระยะใกล้ค่ะ`, options);
+ℹ️ ระบบรับจองเฉพาะเดินทางไกลตามสายรถค่ะ
+⚠️ ไม่รับจองระยะใกล้
+
+ถ้าไม่เห็นป้ายที่ต้องการ สามารถพิมพ์ชื่อจุดลงได้เลยค่ะ`, options);
 }
 
 async function scheduleChoices(userId) {
