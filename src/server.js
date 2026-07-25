@@ -24,6 +24,9 @@ function normalizePlaceText(text) {
   return normaliseThaiDigits(text)
     .replace(/ค่ะ|คะ|ครับ|คับ|จ้า|จ๊ะ|นะ|น้า/g, '')
     .replace(/อยาก|ต้องการ|ขอ|ไป|ลง|ขึ้น|รถ|ที่|ตรง/g, '')
+    .replace(/โคราข|โคราด/g, 'โคราช')
+    .replace(/กบินบุรี|กบินฯ/g, 'กบินทร์บุรี')
+    .replace(/บขส\.?ชลบุรี/g, 'ชลบุรี')
     .replace(/\s+/g, '')
     .replace(/\./g, '')
     .trim();
@@ -345,7 +348,12 @@ async function dateMessage(userId, text) {
   const date = parseTypedDate(text);
   if (!date) return unclearDateMessage();
   if (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date))) {
-    setState(userId, { date });
+    const current = userState(userId);
+    if (current.pendingPickupId) {
+      setState(userId, { date, pickupId: current.pendingPickupId, pendingPickupId: null, flowStep: 'dropoff' });
+      return dropoffChoices(userId);
+    }
+    setState(userId, { date, flowStep: 'pickup' });
     return pickupChoices(userId);
   }
   return bookingContact();
@@ -353,17 +361,30 @@ async function dateMessage(userId, text) {
 
 async function typedStopChoice(userId, text) {
   const current = userState(userId);
-  if (current.date && !current.pickupId) {
+  if (current.date && (!current.pickupId || current.flowStep === 'pickup')) {
     const pickup = await matchStop(await pickupStops(), text);
     if (!pickup) return null;
-    setState(userId, { pickupId: pickup.id });
+    setState(userId, { pickupId: pickup.id, flowStep: 'dropoff' });
     return dropoffChoices(userId);
   }
-  if (current.date && current.pickupId && !current.dropoffId) {
+  if (current.date && current.pickupId && (!current.dropoffId || current.flowStep === 'dropoff')) {
     const dropoff = await matchStop(await dropoffStops(current.pickupId), text);
     if (!dropoff) return null;
-    setState(userId, { dropoffId: dropoff.id });
+    setState(userId, { dropoffId: dropoff.id, flowStep: 'schedule' });
     return scheduleChoices(userId);
+  }
+  if (!current.date) {
+    const pickup = await matchStop(await pickupStops(), text);
+    if (!pickup) return null;
+    setState(userId, { pendingPickupId: pickup.id, flowStep: 'date' });
+    return quick(`รับจุดขึ้นเป็น ${pickup.name} แล้วค่ะ 🚍
+
+ขอวันที่เดินทางอีกครั้งนะคะ
+กรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์เช่น 28, 28/7, วันที่ 28 ค่ะ`, [
+      ...await dateButtons(),
+      button('จองล่วงหน้า', 'action=advance_booking'),
+      button('ติดต่อแอดมิน', 'action=contact_admin')
+    ]);
   }
   return null;
 }
@@ -660,12 +681,21 @@ async function handleEvent(event) {
     if (action === 'restart') message = await start(userId);
     if (action === 'start_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
-    if (action === 'date') { setState(userId, { date: params.get('value') }); message = await pickupChoices(userId); }
+    if (action === 'date') {
+      const current = userState(userId);
+      if (current.pendingPickupId) {
+        setState(userId, { date: params.get('value'), pickupId: current.pendingPickupId, pendingPickupId: null, flowStep: 'dropoff' });
+        message = await dropoffChoices(userId);
+      } else {
+        setState(userId, { date: params.get('value'), flowStep: 'pickup' });
+        message = await pickupChoices(userId);
+      }
+    }
     if (action === 'pickup_page') message = await pickupChoices(userId, params.get('page'));
-    if (action === 'pickup') { setState(userId, { pickupId: params.get('value') }); message = await dropoffChoices(userId); }
+    if (action === 'pickup') { setState(userId, { pickupId: params.get('value'), flowStep: 'dropoff' }); message = await dropoffChoices(userId); }
     if (action === 'dropoff_page') message = await dropoffChoices(userId, params.get('page'));
-    if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value') }); message = await scheduleChoices(userId); }
-    if (action === 'schedule') message = await result(userId, params.get('route'), params.get('time'));
+    if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value'), flowStep: 'schedule' }); message = await scheduleChoices(userId); }
+    if (action === 'schedule') { setState(userId, { flowStep: 'result' }); message = await result(userId, params.get('route'), params.get('time')); }
   }
   if (!message) message = { type: 'text', text: 'พิมพ์ข้อความใด ๆ เพื่อเริ่มเช็กรอบรถค่ะ' };
   await fetch('https://api.line.me/v2/bot/message/reply', {
