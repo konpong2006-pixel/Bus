@@ -798,15 +798,26 @@ async function scheduleChoices(userId) {
   const routes = await routesForJourney(pickupId, dropoffId);
   const nested = await Promise.all(routes.map(async (route) => {
     const schedules = await schedulesFor(route.id, date);
-    return schedules.map((schedule) => button(
-      `${route.origin} ${schedule.departureTime}`,
-      `action=schedule&route=${route.id}&time=${schedule.departureTime}`,
-      `${route.name} รอบ ${schedule.departureTime}`
-    ));
+    return schedules.map((schedule) => ({
+      label: `${route.origin} ${schedule.departureTime}`,
+      button: button(
+        `${route.origin} ${schedule.departureTime}`,
+        `action=schedule&route=${route.id}&time=${schedule.departureTime}`,
+        `${route.name} รอบ ${schedule.departureTime}`
+      )
+    }));
   }));
-  const options = nested.flat();
+  const choices = nested.flat();
+  const options = choices.map((choice) => choice.button);
   if (!options.length) return { type: 'text', text: `ไม่พบรอบรถในวันที่ ${thaiDate(date)} สำหรับเส้นทางนี้ค่ะ\nกรุณาติดต่อแอดมินเพื่อสอบถามเพิ่มเติม` };
-  return quick(`เลือกรอบรถ\nวันที่ ${thaiDate(date)}`, chunk(options));
+  const scheduleList = choices.map((choice) => `- ${choice.label}`).join('\n');
+  return quick(`เลือกรอบรถ
+วันที่ ${thaiDate(date)}
+
+รอบที่มีตามเงื่อนไขนี้:
+${scheduleList}
+
+กรุณากดเลือกรอบรถ หรือพิมพ์เวลาได้เลยค่ะ`, chunk(options));
 }
 
 async function result(userId, routeId, departureTime) {
