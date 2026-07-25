@@ -255,6 +255,26 @@ function adminBookingText(booking, paidText = '') {
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
 
+function customerTicketText(booking, paidText = '') {
+  return `🎫 ตั๋วโดยสาร
+
+📅 วันที่: ${thaiDate(booking.date)}
+📍 จุดขึ้น: ${booking.pickupSpecial || booking.pickupPoint}
+⏰ เวลา: ${booking.departureTime}
+🏁 จุดลง: ${booking.dropoffPoint || booking.destinationProvince}
+
+👤 ผู้จอง: ${booking.customerName}
+📞 เบอร์โทร: ${booking.phone || '-'}
+🚌 เบอร์รถ: รอแจ้ง
+🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
+💰 ชำระเงิน: ${paidText || moneyText(lockedPaymentAmount(booking)) || 'ตรวจผ่าน SlipOK'}
+
+☎️ เบอร์คนขับ: รอแจ้ง
+☎️ เบอร์แอดมิน: 092-774-4341
+
+โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
+}
+
 async function handleBookingText(userId, text) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
@@ -513,6 +533,16 @@ async function slipMessage(event) {
         await pushAdminText(`บันทึกรายการลง Google Sheet ไม่สำเร็จ\nกรุณาจดรายการนี้เองก่อนค่ะ\n${sheetError.message ?? sheetError}`);
       }
       setState(event.source.userId, { booking: { ...booking, step: 'paid' } });
+      return [
+        {
+          type: 'text',
+          text: `ได้รับสลิปแล้วค่ะ\nระบบตรวจสอบสลิปเบื้องต้นผ่านแล้ว ✅${paidText}\n\nระบบออกตั๋วให้เรียบร้อยแล้วค่ะ`
+        },
+        {
+          type: 'text',
+          text: customerTicketText(booking, adminPaidText)
+        }
+      ];
     } else {
       await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
     }
