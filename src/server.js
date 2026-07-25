@@ -493,14 +493,56 @@ function isSlipOkSystemIssue(result) {
     || /quota|limit|credit|balance|package|หมด|โควต|เครดิต|แพ็กเกจ/.test(message);
 }
 
+function simulateSlipOk() {
+  return ['1', 'true', 'yes', 'ใช่'].includes(String(process.env.SIMULATE_SLIP_OK ?? '').trim().toLowerCase());
+}
+
+async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรวจผ่าน SlipOK') {
+  const paidText = amount == null ? '' : `\nยอดชำระ: ${amount.toLocaleString('th-TH')} บาท`;
+  const adminPaidText = amount == null ? 'ตรวจผ่าน SlipOK' : `${amount.toLocaleString('th-TH')} บาท`;
+  await pushAdminText(adminBookingText(booking, adminPaidText));
+  try {
+    const sheetResult = await appendPaidBooking({
+      booking,
+      paidAmount: amount,
+      note: `${notePrefix}${amount == null ? '' : ` / ยอดชำระ ${amount.toLocaleString('th-TH')} บาท`}`
+    });
+    if (sheetResult.skipped) {
+      await pushAdminText('หมายเหตุ: ยังไม่ได้บันทึกรายการลง Google Sheet เพราะยังไม่ได้ตั้งค่า Google Sheets env');
+    }
+  } catch (sheetError) {
+    console.error(sheetError);
+    await pushAdminText(`บันทึกรายการลง Google Sheet ไม่สำเร็จ\nกรุณาจดรายการนี้เองก่อนค่ะ\n${sheetError.message ?? sheetError}`);
+  }
+  setState(userId, { booking: { ...booking, step: 'paid' } });
+  return [
+    {
+      type: 'text',
+      text: `ได้รับสลิปแล้วค่ะ\nระบบตรวจสอบสลิปเบื้องต้นผ่านแล้ว ✅${paidText}\n\nระบบออกตั๋วให้เรียบร้อยแล้วค่ะ`
+    },
+    {
+      type: 'text',
+      text: customerTicketText(booking, adminPaidText)
+    }
+  ];
+}
+
 async function slipMessage(event) {
+  const booking = userState(event.source.userId).booking;
+  if (simulateSlipOk()) {
+    if (booking?.step === 'awaiting_slip') {
+      return paidBookingReply(event.source.userId, booking, lockedPaymentAmount(booking), 'โหมดทดลอง: จำลองตรวจสลิปผ่าน');
+    }
+    await pushAdminText('มีลูกค้าส่งรูปเข้ามาในโหมดทดลองสลิป แต่ไม่พบรายการจองที่รอชำระในแชทนี้ค่ะ');
+    return { type: 'text', text: 'ได้รับรูปแล้วค่ะ\n\nตอนนี้เปิดโหมดทดลองสลิปอยู่ แต่ยังไม่พบรายการจองที่รอชำระในแชทนี้ค่ะ\nกรุณาเริ่มจองตั๋วก่อนส่งสลิปนะคะ' };
+  }
+
   if (!slipOkConfigured()) {
     return { type: 'text', text: slipOkUnavailableText() };
   }
 
   try {
     const file = await downloadLineContent(event.message.id);
-    const booking = userState(event.source.userId).booking;
     const lockedAmount = booking?.step === 'awaiting_slip' ? lockedPaymentAmount(booking) : null;
     const result = await verifySlipImage(file.buffer, { contentType: file.contentType, amount: lockedAmount });
     if (!result.ok) {
@@ -517,32 +559,7 @@ async function slipMessage(event) {
     const dateText = slipDate(result.data) ? `\nเวลาตามสลิป: ${slipDate(result.data)}` : '';
 
     if (booking?.step === 'awaiting_slip') {
-      const adminPaidText = amount == null ? 'ตรวจผ่าน SlipOK' : `${amount.toLocaleString('th-TH')} บาท`;
-      await pushAdminText(adminBookingText(booking, adminPaidText));
-      try {
-        const sheetResult = await appendPaidBooking({
-          booking,
-          paidAmount: amount,
-          note: `ตรวจผ่าน SlipOK${amount == null ? '' : ` / ยอดชำระ ${amount.toLocaleString('th-TH')} บาท`}`
-        });
-        if (sheetResult.skipped) {
-          await pushAdminText('หมายเหตุ: ยังไม่ได้บันทึกรายการลง Google Sheet เพราะยังไม่ได้ตั้งค่า Google Sheets env');
-        }
-      } catch (sheetError) {
-        console.error(sheetError);
-        await pushAdminText(`บันทึกรายการลง Google Sheet ไม่สำเร็จ\nกรุณาจดรายการนี้เองก่อนค่ะ\n${sheetError.message ?? sheetError}`);
-      }
-      setState(event.source.userId, { booking: { ...booking, step: 'paid' } });
-      return [
-        {
-          type: 'text',
-          text: `ได้รับสลิปแล้วค่ะ\nระบบตรวจสอบสลิปเบื้องต้นผ่านแล้ว ✅${paidText}\n\nระบบออกตั๋วให้เรียบร้อยแล้วค่ะ`
-        },
-        {
-          type: 'text',
-          text: customerTicketText(booking, adminPaidText)
-        }
-      ];
+      return paidBookingReply(event.source.userId, booking, amount, 'ตรวจผ่าน SlipOK');
     } else {
       await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
     }
