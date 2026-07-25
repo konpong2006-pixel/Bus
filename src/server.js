@@ -20,9 +20,15 @@ const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 function chunk(items, size = 13) { return items.slice(0, size); }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
+function cleanCustomerText(text) {
+  return normaliseThaiDigits(String(text ?? '').toLowerCase())
+    .replace(/[🙏😊😄😃🙂🥰😍❤️💯✅]/g, '')
+    .replace(/(ค่ะ|คะ|ครับ|คับ|ค้าบ|จ้า|จ๊ะ|จ๋า|ฮะ|ฮ้ะ|นะ|น้า|น่ะ|เด้อ|จ้าา|ค่ะะ)+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 function normalizePlaceText(text) {
-  return normaliseThaiDigits(text)
-    .replace(/ค่ะ|คะ|ครับ|คับ|จ้า|จ๊ะ|นะ|น้า/g, '')
+  return cleanCustomerText(text)
     .replace(/อยาก|ต้องการ|ขอ|ไป|ลง|ขึ้น|รถ|ที่|ตรง/g, '')
     .replace(/โคราข|โคราด/g, 'โคราช')
     .replace(/กบินบุรี|กบินฯ/g, 'กบินทร์บุรี')
@@ -61,7 +67,7 @@ function dateFromDay(day, text) {
 }
 
 function parseTypedDate(text) {
-  const value = normaliseThaiDigits(text).trim().toLowerCase();
+  const value = cleanCustomerText(text);
   const today = bangkokDate();
   const [currentYear] = today.split('-').map(Number);
 
@@ -92,7 +98,7 @@ function parseTypedDate(text) {
   match = value.match(/(?:วันที่|วันที|วันเดินทาง|เดินทางวันที่|ไปวันที่|จองวันที่)\s*(\d{1,2})/);
   if (match) return dateFromDay(Number(match[1]), value);
 
-  match = value.match(/^(\d{1,2})\s*(?:ค่ะ|คะ|ครับ|จ้า|จ๊ะ|นะ|น้า)$/);
+  match = value.match(/^(\d{1,2})$/);
   if (match) return dateFromDay(Number(match[1]), value);
 
   match = value.match(/(?:^|[^\dA-Za-zก-ฮ])(\d{1,2})(?:$|[^\dA-Za-zก-ฮ])/);
@@ -173,18 +179,19 @@ function bookingAsk(text) {
 }
 
 function parseSeats(text) {
-  const match = normaliseThaiDigits(text).match(/\d+/);
+  const match = cleanCustomerText(text).match(/\d+/);
   return match ? Number(match[0]) : null;
 }
 
 function parseContact(text) {
-  const phoneMatch = normaliseThaiDigits(text).match(/0[\d\s-]{8,}/);
+  const cleaned = cleanCustomerText(text);
+  const phoneMatch = cleaned.match(/0[\d\s-]{8,}/);
   const phone = phoneMatch ? phoneMatch[0].replace(/\s+/g, ' ').trim() : '';
-  const name = text
+  const name = cleaned
     .replace(/ชื่อผู้จอง|ผู้จอง|ชื่อ|เบอร์โทร|เบอร์|โทร|[:：]/g, '')
     .replace(phoneMatch?.[0] ?? '', '')
     .trim();
-  return { name: name || text.trim(), phone };
+  return { name: name || cleaned || text.trim(), phone };
 }
 
 function moneyText(amount) {
@@ -282,7 +289,7 @@ async function handleBookingText(userId, text) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
 
-  const value = text.trim();
+  const value = cleanCustomerText(text);
   if (['ยกเลิก', 'เริ่มใหม่', 'cancel'].includes(value.toLowerCase())) {
     setState(userId, { booking: null });
     return { type: 'text', text: 'ยกเลิกการจองแล้วค่ะ หากต้องการเริ่มใหม่พิมพ์ว่า จองตั๋ว ได้เลยค่ะ' };
@@ -296,27 +303,27 @@ async function handleBookingText(userId, text) {
   }
 
   if (current.step === 'originProvince') {
-    setState(userId, { booking: { ...current, step: 'destinationProvince', originProvince: value } });
+    setState(userId, { booking: { ...current, step: 'destinationProvince', originProvince: value || text.trim() } });
     return bookingAsk('🏁 ต้องการไปลงจังหวัดไหนคะ');
   }
 
   if (current.step === 'destinationProvince') {
-    setState(userId, { booking: { ...current, step: 'departureTime', destinationProvince: value } });
+    setState(userId, { booking: { ...current, step: 'departureTime', destinationProvince: value || text.trim() } });
     return bookingAsk('⏰ ต้องการรอบกี่โมงคะ');
   }
 
   if (current.step === 'departureTime') {
-    setState(userId, { booking: { ...current, step: 'pickupPoint', departureTime: value } });
+    setState(userId, { booking: { ...current, step: 'pickupPoint', departureTime: value || text.trim() } });
     return bookingAsk('📍 ขึ้นรถตรงจุดไหนคะ');
   }
 
   if (current.step === 'pickupPoint') {
-    setState(userId, { booking: { ...current, step: 'seats', pickupPoint: value } });
+    setState(userId, { booking: { ...current, step: 'seats', pickupPoint: value || text.trim() } });
     return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
   }
 
   if (current.step === 'pickupSpecial') {
-    setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: value } });
+    setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: value || text.trim() } });
     return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
   }
 
