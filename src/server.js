@@ -94,6 +94,23 @@ function relativeDate(days) {
   return date.toISOString().slice(0, 10);
 }
 
+function parseTypedTime(text) {
+  const value = cleanCustomerText(text);
+  const format = (hour, minute = '00') => {
+    const h = Number(hour);
+    const m = Number(minute);
+    if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+  let match = value.match(/(\d{1,2})\s*[:.]\s*(\d{2})/);
+  if (match) return format(match[1], match[2]);
+  match = value.match(/(\d{1,2})\s*โมง\s*(\d{1,2})?/);
+  if (match) return format(match[1], match[2] ?? '00');
+  match = value.match(/(?:รอบ|เวลา)?\s*(\d{1,2})(?:\s*น\.?)?$/);
+  if (match) return format(match[1]);
+  return null;
+}
+
 function parseTypedDate(text) {
   const value = cleanCustomerText(text);
   const today = bangkokDate();
@@ -211,8 +228,15 @@ function bookingAsk(text) {
 }
 
 function parseSeats(text) {
-  const match = cleanCustomerText(text).match(/\d+/);
-  return match ? Number(match[0]) : null;
+  const value = cleanCustomerText(text);
+  const match = value.match(/\d+/);
+  if (match) return Number(match[0]);
+  const wordNumbers = [
+    ['หนึ่ง', 1], ['นึง', 1], ['คนเดียว', 1],
+    ['สอง', 2], ['สาม', 3], ['สี่', 4], ['ห้า', 5],
+    ['หก', 6], ['เจ็ด', 7], ['แปด', 8], ['เก้า', 9], ['สิบ', 10]
+  ];
+  return wordNumbers.find(([word]) => value.includes(word))?.[1] ?? null;
 }
 
 function parseContact(text) {
@@ -380,6 +404,8 @@ async function handleBookingText(userId, text) {
 async function dateMessage(userId, text) {
   const booking = await handleBookingText(userId, text);
   if (booking) return booking;
+  const typedSchedule = await typedScheduleChoice(userId, text);
+  if (typedSchedule) return typedSchedule;
   const inferred = await inferJourneyFromText(userId, text);
   if (inferred) return inferred;
   const typedChoice = await typedStopChoice(userId, text);
@@ -403,21 +429,25 @@ async function dateMessage(userId, text) {
 async function inferJourneyFromText(userId, text) {
   const current = userState(userId);
   const date = parseTypedDate(text) ?? current.date;
+  const pickupStopsList = await pickupStops();
+  const directedPickup = await directionalStop(pickupStopsList, text, 'pickup');
   const pickupCandidates = extractStopMentions(await pickupStops(), text);
   let pickup = current.pickupId
     ? (await pickupStops()).find((stop) => stop.id === current.pickupId)
-    : pickupCandidates[0];
+    : directedPickup ?? pickupCandidates[0];
   if (!pickup && current.pendingPickupId) {
     pickup = (await pickupStops()).find((stop) => stop.id === current.pendingPickupId);
   }
 
   if (!date || !pickup) return null;
 
-  const dropoffCandidates = extractStopMentions(await dropoffStops(pickup.id), text)
+  const dropoffStopsList = await dropoffStops(pickup.id);
+  const directedDropoff = await directionalStop(dropoffStopsList, text, 'dropoff');
+  const dropoffCandidates = extractStopMentions(dropoffStopsList, text)
     .filter((stop) => stop.id !== pickup.id);
   const dropoff = current.dropoffId
-    ? (await dropoffStops(pickup.id)).find((stop) => stop.id === current.dropoffId)
-    : dropoffCandidates[0];
+    ? dropoffStopsList.find((stop) => stop.id === current.dropoffId)
+    : directedDropoff ?? dropoffCandidates[0];
 
   if (dropoff && (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date)))) {
     setState(userId, { date, pickupId: pickup.id, dropoffId: dropoff.id, pendingPickupId: null, flowStep: 'schedule' });
@@ -430,6 +460,23 @@ async function inferJourneyFromText(userId, text) {
   }
 
   return null;
+}
+
+async function typedScheduleChoice(userId, text) {
+  const current = userState(userId);
+  if (!current.date || !current.pickupId || !current.dropoffId || current.flowStep !== 'schedule') return null;
+  const typedTime = parseTypedTime(text);
+  if (!typedTime) return null;
+  const routes = await routesForJourney(current.pickupId, current.dropoffId);
+  for (const route of routes) {
+    const schedules = await schedulesFor(route.id, current.date);
+    const schedule = schedules.find((item) => item.departureTime === typedTime);
+    if (schedule) {
+      setState(userId, { flowStep: 'result' });
+      return result(userId, route.id, schedule.departureTime);
+    }
+  }
+  return { type: 'text', text: `ไม่พบรอบ ${typedTime} น. สำหรับเส้นทางนี้ค่ะ\nกรุณากดเลือกรอบจากปุ่มด้านล่าง หรือพิมพ์เวลาใหม่อีกครั้งค่ะ` };
 }
 
 async function typedStopChoice(userId, text) {
@@ -465,6 +512,16 @@ async function typedStopChoice(userId, text) {
 async function matchStop(stops, text) {
   const matches = extractStopMentions(stops, text);
   return matches.length === 1 ? matches[0] : null;
+}
+
+async function directionalStop(stops, text, mode) {
+  const value = cleanCustomerText(text);
+  const pattern = mode === 'pickup'
+    ? /(?:จาก|ขึ้น|ต้นทาง)\s*([^,，\n]+?)(?=ไป|ลง|ปลายทาง|$)/
+    : /(?:ไป|ลง|ปลายทาง)\s*([^,，\n]+?)(?=จาก|ขึ้น|ต้นทาง|$)/;
+  const match = value.match(pattern);
+  if (!match) return null;
+  return matchStop(stops, match[1]);
 }
 
 function extractStopMentions(stops, text) {
