@@ -762,6 +762,7 @@ async function pickupChoices(userId, page = 0) {
   const totalPages = Math.max(1, Math.ceil(stops.length / pageSize));
   const currentPage = Math.min(Math.max(Number(page) || 0, 0), totalPages - 1);
   const start = currentPage * pageSize;
+  const stopList = stops.map(({ name }) => `- ${name}`).join('\n');
   const options = stops
     .slice(start, start + pageSize)
     .map(({ id, name }) => button(name, `action=pickup&value=${id}`));
@@ -771,6 +772,9 @@ async function pickupChoices(userId, page = 0) {
 
 ℹ️ ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ
 ⚠️ ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง
+
+จุดขึ้นที่เลือกได้:
+${stopList}
 
 กรุณากดเลือกจุดขึ้น หรือพิมพ์ชื่อจุดขึ้นได้เลยค่ะ`, options);
 }
@@ -782,6 +786,7 @@ async function dropoffChoices(userId, page = 0) {
   const totalPages = Math.max(1, Math.ceil(stops.length / pageSize));
   const currentPage = Math.min(Math.max(Number(page) || 0, 0), totalPages - 1);
   const start = currentPage * pageSize;
+  const stopList = stops.map(({ name }) => `- ${name}`).join('\n');
   const options = stops
     .slice(start, start + pageSize)
     .map(({ id, name }) => button(name, `action=dropoff&value=${id}`));
@@ -789,7 +794,10 @@ async function dropoffChoices(userId, page = 0) {
   if (currentPage < totalPages - 1) options.push(button('ดูปลายทางเพิ่ม', `action=dropoff_page&page=${currentPage + 1}`, 'ดูปลายทางเพิ่ม'));
   return quick(`เลือกปลายทางที่ต้องการเดินทางค่ะ 🏁
 
-ถ้าไม่เห็นป้ายที่ต้องการ สามารถพิมพ์ชื่อจุดลงได้เลยค่ะ`, options);
+จุดลงที่เลือกได้:
+${stopList}
+
+กรุณากดเลือกจุดลง หรือพิมพ์ชื่อจุดลงได้เลยค่ะ`, options);
 }
 
 async function scheduleChoices(userId) {
