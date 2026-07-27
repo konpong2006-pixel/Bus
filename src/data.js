@@ -53,8 +53,26 @@ function normalizeTime(value) {
   return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 
+function normalizeBusNumber(value) {
+  return String(value ?? '').replace(/\s+/g, '').trim();
+}
+
 function uniqueSchedules(schedules) {
   return [...new Map(schedules.map((schedule) => [schedule.id, schedule])).values()];
+}
+
+function busPhoneMap(rows) {
+  const grouped = new Map();
+  for (const row of rows) {
+    const busNumber = normalizeBusNumber(row[1]);
+    const phone = String(row[2] ?? '').trim();
+    if (!busNumber || !phone) continue;
+    if (!grouped.has(busNumber)) grouped.set(busNumber, new Set());
+    grouped.get(busNumber).add(phone);
+  }
+  return new Map([...grouped]
+    .filter(([, phones]) => phones.size === 1)
+    .map(([busNumber, phones]) => [busNumber, [...phones][0]]));
 }
 
 function routeTab(routeId) {
@@ -129,6 +147,7 @@ async function loadSheetData() {
 
   const scheduleHeaders = (await sheetRows('รอบรถ', 'A2:K2') ?? [])[0] ?? [];
   const scheduleRows = await sheetRows('รอบรถ', 'A3:K500') ?? [];
+  const driverPhonesByBus = busPhoneMap(await sheetRows('เบอร์รถ', 'A3:D300') ?? []);
   const dateIndex = columnIndex(scheduleHeaders, ['วันที่'], 0);
   const routeIndex = columnIndex(scheduleHeaders, ['เส้นทาง'], 1);
   const departureIndex = columnIndex(scheduleHeaders, ['เวลาออกจากต้นทาง'], 2);
@@ -148,8 +167,8 @@ async function loadSheetData() {
       const status = row[statusIndex];
       const seats = row[seatsIndex];
       const note = row[noteIndex];
-      const busNumber = row[busNumberIndex];
-      const driverPhone = row[driverPhoneIndex];
+      const busNumber = normalizeBusNumber(row[busNumberIndex]);
+      const driverPhone = row[driverPhoneIndex] || driverPhonesByBus.get(busNumber);
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
       if (!route) return null;
       return {
@@ -161,7 +180,7 @@ async function loadSheetData() {
         status: String(status || '').trim(),
         seats: parseNumber(seats) || null,
         note: String(note || '').trim(),
-        busNumber: String(busNumber || '').trim(),
+        busNumber,
         driverPhone: String(driverPhone || '').trim(),
         active: true
       };

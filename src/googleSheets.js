@@ -89,6 +89,7 @@ function appsScriptTab(data, tabName) {
   if (tabName === 'รอบรถ') return data.schedules ?? [];
   if (tabName === 'เปิดปิดรายวัน') return data.dayOpen ?? [];
   if (tabName === 'เวลาถึงจุดจอด') return data.stopTimes ?? [];
+  if (tabName === 'เบอร์รถ') return data.busPhones ?? [];
   return data.fares?.[tabName] ?? [];
 }
 

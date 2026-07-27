@@ -23,6 +23,7 @@ function getBackendData() {
     schedules: sheetValues(BACKEND_SHEET_ID, 'รอบรถ'),
     dayOpen: sheetValues(BACKEND_SHEET_ID, 'เปิดปิดรายวัน'),
     stopTimes: sheetValues(BACKEND_SHEET_ID, 'เวลาถึงจุดจอด'),
+    busPhones: sheetValues(BACKEND_SHEET_ID, 'เบอร์รถ'),
     fares: {
       'ราคา ระยอง-โคราช': sheetValues(BACKEND_SHEET_ID, 'ราคา ระยอง-โคราช'),
       'ราคา โคราช-ระยอง': sheetValues(BACKEND_SHEET_ID, 'ราคา โคราช-ระยอง'),
