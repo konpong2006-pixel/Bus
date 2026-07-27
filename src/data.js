@@ -53,6 +53,10 @@ function normalizeTime(value) {
   return `${match[1].padStart(2, '0')}:${match[2]}`;
 }
 
+function uniqueSchedules(schedules) {
+  return [...new Map(schedules.map((schedule) => [schedule.id, schedule])).values()];
+}
+
 function routeTab(routeId) {
   if (routeId === 'RY-KOR') return 'ราคา ระยอง-โคราช';
   if (routeId === 'KOR-RY') return 'ราคา โคราช-ระยอง';
@@ -134,7 +138,7 @@ async function loadSheetData() {
   const noteIndex = columnIndex(scheduleHeaders, ['หมายเหตุ'], 7);
   const busNumberIndex = columnIndex(scheduleHeaders, ['เลขรถ/เบอร์รถ', 'เบอร์รถ', 'เลขรถ'], 8);
   const driverPhoneIndex = columnIndex(scheduleHeaders, ['เบอร์คนขับ', 'โทรคนขับ', 'เบอร์โทรคนขับ'], 9);
-  const schedules = scheduleRows
+  const schedules = uniqueSchedules(scheduleRows
     .filter((row) => row[dateIndex] && row[routeIndex] && row[departureIndex] && scheduleConfirmed(row[statusIndex]))
     .map((row) => {
       const date = row[dateIndex];
@@ -162,7 +166,7 @@ async function loadSheetData() {
         active: true
       };
     })
-    .filter(Boolean);
+    .filter(Boolean));
 
   const dayRows = await sheetRows('เปิดปิดรายวัน', 'A3:C500') ?? [];
   const dayOpen = new Map(dayRows.filter((row) => row[0]).map((row) => [String(row[0]).slice(0, 10), normalizeActive(row[1])]));

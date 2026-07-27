@@ -70,17 +70,27 @@ function saveSlipFile(slip, booking, timestamp) {
   if (!SLIP_FOLDER_ID || !slip || !slip.base64) return '';
   const bytes = Utilities.base64Decode(slip.base64);
   const contentType = slip.contentType || 'image/jpeg';
+  const extension = contentType.indexOf('png') >= 0 ? '.png' : '.jpg';
   const fileName = [
     'slip',
     booking.date || '',
     booking.departureTime || '',
     booking.customerName || '',
     timestamp
-  ].join('-').replace(/[\\/:*?"<>|]/g, '_') + '.jpg';
+  ].join('-').replace(/[\\/:*?"<>|]/g, '_') + extension;
   const blob = Utilities.newBlob(bytes, contentType, fileName);
-  const file = DriveApp.getFolderById(SLIP_FOLDER_ID).createFile(blob);
+  const parent = DriveApp.getFolderById(SLIP_FOLDER_ID);
+  const folder = getOrCreateChildFolder(parent, booking.date || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd'));
+  const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return file.getUrl();
+}
+
+function getOrCreateChildFolder(parent, name) {
+  const safeName = String(name || 'unknown-date').replace(/[\\/:*?"<>|]/g, '_');
+  const folders = parent.getFoldersByName(safeName);
+  if (folders.hasNext()) return folders.next();
+  return parent.createFolder(safeName);
 }
 
 function sheetValues(spreadsheetId, sheetName) {
