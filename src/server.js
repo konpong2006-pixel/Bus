@@ -852,7 +852,14 @@ async function scheduleChoices(userId) {
   }));
   const choices = nested.flat();
   const options = choices.map((choice) => choice.button);
-  if (!options.length) return { type: 'text', text: `ไม่พบรอบรถในวันที่ ${thaiDate(date)} สำหรับเส้นทางนี้ค่ะ\nกรุณาติดต่อแอดมินเพื่อสอบถามเพิ่มเติม` };
+  if (!options.length) {
+    return quick(`ขออภัยค่ะ ไม่พบรอบรถที่ตรงกับเส้นทางนี้ในวันที่ ${thaiDate(date)} 🙏
+
+สามารถลองเช็กรอบอื่น หรือกดติดต่อแอดมินเพื่อให้ช่วยตรวจสอบเพิ่มเติมได้เลยค่ะ`, [
+      button('เช็กรอบอื่น', 'action=restart'),
+      button('ติดต่อแอดมิน', 'action=contact_admin')
+    ]);
+  }
   const scheduleList = choices.map((choice) => `- ${choice.label}`).join('\n');
   return quick(`เลือกรอบรถ
 วันที่ ${thaiDate(date)}
