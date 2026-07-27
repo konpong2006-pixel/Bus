@@ -12,6 +12,7 @@ for (const key of required) if (!process.env[key]) console.warn(`คำเตื
 const config = { channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN, channelSecret: process.env.LINE_CHANNEL_SECRET };
 const app = express();
 const state = new Map();
+const processedSlipMessageIds = new Set();
 app.use(express.static('public'));
 
 const button = (label, data, displayText = label) => ({ type: 'action', action: { type: 'postback', label, data, displayText } });
@@ -198,6 +199,7 @@ async function selectedTripBooking(userId) {
     routeId: selectedRouteId,
     pickupId,
     dropoffId,
+    busNumber: schedule.busNumber || '',
     driverPhone: schedule.driverPhone || ''
   };
 }
@@ -322,7 +324,7 @@ function adminBookingText(booking, paidText = '') {
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์โทร: ${booking.phone || '-'}
 
-🚌 เบอร์รถ: รอแจ้ง
+🚌 เบอร์รถ: ${booking.busNumber || 'รอแจ้ง'}
 🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
 💰 ยอดโอนเงิน: ${paidText || 'ตรวจผ่าน SlipOK'}
 
@@ -344,7 +346,7 @@ function customerTicketText(booking, paidText = '') {
 
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์โทร: ${booking.phone || '-'}
-🚌 เบอร์รถ: รอแจ้ง
+🚌 เบอร์รถ: ${booking.busNumber || 'รอแจ้ง'}
 🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
 💰 ชำระเงิน: ${paidText || moneyText(lockedPaymentAmount(booking)) || 'ตรวจผ่าน SlipOK'}
 
@@ -691,15 +693,17 @@ function simulateSlipOk() {
   return ['1', 'true', 'yes', 'ใช่'].includes(String(process.env.SIMULATE_SLIP_OK ?? '').trim().toLowerCase());
 }
 
-async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรวจผ่าน SlipOK') {
+async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรวจผ่าน SlipOK', options = {}) {
   const paidText = amount == null ? '' : `\nยอดชำระ: ${amount.toLocaleString('th-TH')} บาท`;
   const adminPaidText = amount == null ? 'ตรวจผ่าน SlipOK' : `${amount.toLocaleString('th-TH')} บาท`;
-  await pushAdminText(adminBookingText(booking, adminPaidText));
+  const paidBooking = { ...booking, status: 'ออกตั๋วแล้ว' };
+  await pushAdminText(adminBookingText(paidBooking, adminPaidText));
   try {
     const sheetResult = await appendPaidBooking({
-      booking,
+      booking: paidBooking,
       paidAmount: amount,
-      note: `${notePrefix}${amount == null ? '' : ` / ยอดชำระ ${amount.toLocaleString('th-TH')} บาท`}`
+      note: `${notePrefix}${amount == null ? '' : ` / ยอดชำระ ${amount.toLocaleString('th-TH')} บาท`}`,
+      slipFile: options.slipFile ?? null
     });
     if (sheetResult.skipped) {
       await pushAdminText('หมายเหตุ: ยังไม่ได้บันทึกรายการลง Google Sheet เพราะยังไม่ได้ตั้งค่า Google Sheets env');
@@ -708,7 +712,7 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
     console.error(sheetError);
     await pushAdminText(`บันทึกรายการลง Google Sheet ไม่สำเร็จ\nกรุณาจดรายการนี้เองก่อนค่ะ\n${sheetError.message ?? sheetError}`);
   }
-  setState(userId, { booking: { ...booking, step: 'paid' } });
+  setState(userId, { booking: { ...paidBooking, step: 'paid' } });
   return [
     {
       type: 'text',
@@ -716,15 +720,22 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
     },
     {
       type: 'text',
-      text: customerTicketText(booking, adminPaidText)
+      text: customerTicketText(paidBooking, adminPaidText)
     }
   ];
 }
 
 async function slipMessage(event) {
   const booking = userState(event.source.userId).booking;
+  if (processedSlipMessageIds.has(event.message.id)) {
+    return { type: 'text', text: 'ได้รับสลิปนี้แล้วค่ะ ระบบกำลังดำเนินการจากรูปเดิมอยู่ ไม่ต้องส่งซ้ำค่ะ' };
+  }
+  if (booking?.step === 'paid') {
+    return { type: 'text', text: 'รายการนี้ชำระเงินและออกตั๋วแล้วค่ะ หากต้องการแก้ไขกรุณาติดต่อแอดมินนะคะ' };
+  }
   if (simulateSlipOk()) {
     if (booking?.step === 'awaiting_slip') {
+      processedSlipMessageIds.add(event.message.id);
       return paidBookingReply(event.source.userId, booking, lockedPaymentAmount(booking), 'โหมดทดลอง: จำลองตรวจสลิปผ่าน');
     }
     await pushAdminText('มีลูกค้าส่งรูปเข้ามาในโหมดทดลองสลิป แต่ไม่พบรายการจองที่รอชำระในแชทนี้ค่ะ');
@@ -753,7 +764,8 @@ async function slipMessage(event) {
     const dateText = slipDate(result.data) ? `\nเวลาตามสลิป: ${slipDate(result.data)}` : '';
 
     if (booking?.step === 'awaiting_slip') {
-      return paidBookingReply(event.source.userId, booking, amount, 'ตรวจผ่าน SlipOK');
+      processedSlipMessageIds.add(event.message.id);
+      return paidBookingReply(event.source.userId, booking, amount, 'ตรวจผ่าน SlipOK', { slipFile: file });
     } else {
       await pushAdminText(`มีลูกค้าส่งสลิปและตรวจผ่าน SlipOK แล้ว\nสถานะ: รอตรวจรายการจอง/ออกตั๋ว${paidText}${receiverText}${dateText}`);
     }

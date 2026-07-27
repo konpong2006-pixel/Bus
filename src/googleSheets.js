@@ -159,15 +159,27 @@ function bangkokTimestamp() {
   }).format(new Date());
 }
 
-export async function appendPaidBooking({ booking, paidAmount, note = '', checkedBy = 'ระบบอัตโนมัติ' }) {
+export async function appendPaidBooking({ booking, paidAmount, note = '', checkedBy = 'ระบบอัตโนมัติ', slipFile = null }) {
   if (!bookingSheetConfigured()) return { skipped: true };
 
   const appUrl = appsScriptUrl();
   if (appUrl) {
+    const shouldUploadSlip = ['1', 'true', 'yes', 'ใช่'].includes(String(process.env.SAVE_SLIP_TO_DRIVE ?? '').trim().toLowerCase());
     const response = await fetch(appUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'appendPaidBooking', booking, paidAmount, note, checkedBy })
+      body: JSON.stringify({
+        action: 'appendPaidBooking',
+        booking,
+        paidAmount,
+        note,
+        checkedBy,
+        slip: shouldUploadSlip && slipFile ? {
+          base64: slipFile.buffer.toString('base64'),
+          contentType: slipFile.contentType,
+          fileName: `slip-${Date.now()}.jpg`
+        } : null
+      })
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || result.ok === false) throw new Error(`Apps Script append failed: ${response.status} ${result.error ?? ''}`);
@@ -187,8 +199,8 @@ export async function appendPaidBooking({ booking, paidAmount, note = '', checke
     booking.date ?? '',
     `${booking.originProvince ?? ''}-${booking.destinationProvince ?? ''}`,
     booking.departureTime ?? '',
-    'รอแจ้ง',
-    'รอแจ้ง',
+    booking.busNumber ?? 'รอแจ้ง',
+    booking.driverPhone ?? 'รอแจ้ง',
     booking.pickupPoint ?? '',
     booking.dropoffPoint ?? booking.destinationProvince ?? '',
     booking.seats ?? '',
@@ -197,8 +209,8 @@ export async function appendPaidBooking({ booking, paidAmount, note = '', checke
     booking.customerName ?? '',
     booking.phone ?? '',
     booking.pickupSpecial ?? '',
-    'ชำระแล้ว',
-    '',
+    booking.status ?? 'ออกตั๋วแล้ว',
+    booking.slipLink ?? '',
     note,
     checkedBy,
     now
