@@ -1,7 +1,7 @@
 const BACKEND_SHEET_ID = '1TUzBqCb2muazvHsSN-jYzSOhI_a1Cp7fWauphluo7Zo';
 const BOOKING_SHEET_ID = '12lh0jNthN7X5_-mmO1RG1bTdWe4JkskIsP9Av4q2fDA';
 const BOOKING_SHEET_NAME = 'รายการจอง';
-const SLIP_FOLDER_ID = '';
+const SLIP_FOLDER_ID = '1EiaPD78DSy6zYyrGUGoU16SI9LtoaD5z';
 
 function doGet(e) {
   const action = e.parameter.action || '';
