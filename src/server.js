@@ -267,6 +267,13 @@ function testPricePerSeat() {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function bookingTermsText() {
+  return `📌 เงื่อนไขการจองตั๋วออนไลน์
+จองแล้วไม่สามารถเลื่อนวันเดินทางหรือเลื่อนรอบรถได้ค่ะ
+กรณีมาไม่ทันเวลานัดหมาย จะถือว่าสละสิทธิ์การเดินทาง
+ทางเพจรถร่วมวิศวกรเสนาขอขอบคุณที่ใช้บริการค่ะ`;
+}
+
 async function withLockedPrice(booking) {
   let fare = null;
   try {
@@ -297,6 +304,8 @@ function bookingSummary(booking) {
 📞 เบอร์: ${booking.phone || '-'}
 💰 ยอดชำระ: ${moneyText(lockedAmount) || 'รอแอดมินยืนยัน'}
 
+${bookingTermsText()}
+
 ${lockedAmount ? 'กรุณาโอนตามยอดนี้เท่านั้น แล้วส่งสลิปในแชทนี้ค่ะ' : 'หากถูกต้อง กรุณาโอนเงินแล้วส่งสลิปในแชทนี้ค่ะ'}`;
 }
 
@@ -320,6 +329,8 @@ function adminBookingText(booking, paidText = '') {
 ☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
 
+${bookingTermsText()}
+
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
 
@@ -339,6 +350,8 @@ function customerTicketText(booking, paidText = '') {
 
 ☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
+
+${bookingTermsText()}
 
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
