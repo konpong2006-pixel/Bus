@@ -210,7 +210,7 @@ async function askBookingDate(userId) {
     setState(userId, { booking: selectedBooking });
     return {
       type: 'text',
-      text: `📅 ใช้วันที่ ${thaiDate(selectedBooking.date)} ค่ะ\n🚍 เส้นทาง: ${selectedBooking.originProvince} ไป ${selectedBooking.destinationProvince}\n⏰ รอบ: ${selectedBooking.departureTime} น.\n📍 จุดขึ้นหลัก: ${selectedBooking.pickupPoint}\n\n📌 ขอจุดขึ้นพิเศษหน่อยค่ะ เช่น หน้าบิ๊กซี / สะพานลอย / จุดนัดรับใกล้เคียง`
+      text: '📌 กรุณาแจ้งจุดขึ้นพิเศษหน่อยค่ะ\nเช่น หน้าบิ๊กซี / สะพานลอย / จุดนัดรับใกล้เคียง\n\nถ้าขึ้นที่จุดหลัก ให้พิมพ์ - หรือ บขส ได้เลยค่ะ'
     };
   }
 
@@ -251,6 +251,12 @@ function parseContact(text) {
     .replace(phoneMatch?.[0] ?? '', '')
     .trim();
   return { name: name || cleaned || text.trim(), phone };
+}
+
+function normalizePickupSpecial(text, fallback) {
+  const value = cleanCustomerText(text).replace(/\s+/g, '');
+  if (!value || ['-', 'บขส', 'บขส.', 'ไม่มี', 'ไม่', 'จุดหลัก', 'ขึ้นจุดหลัก'].includes(value)) return fallback;
+  return text.trim();
 }
 
 function moneyText(amount) {
@@ -391,7 +397,7 @@ async function handleBookingText(userId, text) {
   }
 
   if (current.step === 'pickupSpecial') {
-    setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: value || text.trim() } });
+    setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: normalizePickupSpecial(text, current.pickupPoint) } });
     return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
   }
 
