@@ -575,7 +575,18 @@ function extractStopMentions(stops, text) {
 }
 
 async function unclearDateMessage() {
-  return quick('ขออภัยค่ะ ระบบยังอ่านวันที่เดินทางไม่ชัดเจน\n\nกรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์เป็นตัวอย่างเช่น 28, 28/7, วันที่ 28 ค่ะ', [
+  const dates = await availableScheduleDates();
+  const dateList = dates.length
+    ? dates.map((date) => `- ${thaiDate(date)}`).join('\n')
+    : '- ตอนนี้ยังไม่มีวันที่เปิดให้จองในระบบ';
+  return quick(`ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏
+
+ตอนนี้ระบบอัตโนมัติสามารถจองได้เฉพาะวันที่มีข้อมูลรอบรถในระบบเท่านั้นค่ะ
+
+วันที่ที่จองได้ตอนนี้:
+${dateList}
+
+กรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์วันที่จากรายการได้เลยค่ะ`, [
     ...await dateButtons(),
     button('ติดต่อแอดมิน', 'action=contact_admin')
   ]);
