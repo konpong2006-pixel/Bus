@@ -330,8 +330,6 @@ function adminBookingText(booking, paidText = '') {
 ☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
 
-${bookingTermsText()}
-
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
 
@@ -351,8 +349,6 @@ function customerTicketText(booking, paidText = '') {
 
 ☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}
 ☎️ เบอร์แอดมิน: 092-774-4341
-
-${bookingTermsText()}
 
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
@@ -869,7 +865,7 @@ async function result(userId, routeId, departureTime) {
   setState(userId, { selectedRouteId: routeId, selectedDepartureTime: departureTime });
   return {
     type: 'text',
-    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\n⏰ รอบออกจาก${route.origin}: ${departureTime} น.\n📍 จุดขึ้น: ${pickup.name}\n🏁 จุดลง: ${dropoff.name}\n\nหมายเหตุ: เวลาถึงจุดขึ้น/จุดลงอาจคลาดเคลื่อนตามสภาพถนนค่ะ\nกรุณามารอรถก่อนเวลา และติดต่อแอดมินเพื่อยืนยันจุดขึ้นอีกครั้ง`,
+    text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\n⏰ รอบออกจาก${route.origin}: ${departureTime} น.\n📍 จุดขึ้น: ${pickup.name}\n🏁 จุดลง: ${dropoff.name}`,
     quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
 }
