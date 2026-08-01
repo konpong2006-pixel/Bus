@@ -39,6 +39,9 @@ function canUseAfterHours(userId) {
 function isBookingOpenFor(userId) {
   return isBookingOpen() || canUseAfterHours(userId);
 }
+function botEnabled() {
+  return !['false', '0', 'off', 'no'].includes(String(process.env.BOT_ENABLED ?? 'true').trim().toLowerCase());
+}
 function handoffToAdmin(userId) {
   if (!isBookingOpenFor(userId)) return closeBookingAfterHours(userId);
   setState(userId, { handoffToAdmin: true, booking: null });
@@ -954,6 +957,7 @@ function fallbackMessage() {
 
 async function handleEvent(event) {
   if (!event.replyToken) return;
+  if (!botEnabled()) return;
   const userId = event.source.userId;
   if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId)) return;
   if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId)) setState(userId, { afterHoursNoticeSent: false });
