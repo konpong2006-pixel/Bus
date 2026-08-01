@@ -13,6 +13,8 @@ const config = { channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN, chan
 const app = express();
 const state = new Map();
 const processedSlipMessageIds = new Set();
+const BOOKING_OPEN_HOUR = 7;
+const BOOKING_CLOSE_HOUR = 22;
 app.use(express.static('public'));
 
 const button = (label, data, displayText = label) => ({ type: 'action', action: { type: 'postback', label, data, displayText } });
@@ -205,6 +207,11 @@ async function selectedTripBooking(userId) {
 }
 
 async function askBookingDate(userId) {
+  if (!isBookingOpen()) {
+    setState(userId, { booking: null });
+    return afterHoursBooking();
+  }
+
   const selectedBooking = await selectedTripBooking(userId);
   if (selectedBooking) {
     setState(userId, { booking: selectedBooking });
@@ -362,6 +369,11 @@ function customerTicketText(booking, paidText = '') {
 async function handleBookingText(userId, text) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
+
+  if (!isBookingOpen()) {
+    setState(userId, { booking: null });
+    return afterHoursBooking();
+  }
 
   const value = cleanCustomerText(text);
   if (['ยกเลิก', 'เริ่มใหม่', 'cancel'].includes(value.toLowerCase())) {
@@ -627,13 +639,14 @@ function adminContact() {
 }
 
 function isBookingOpen() {
-  return true;
+  const hour = bangkokHour();
+  return hour >= BOOKING_OPEN_HOUR && hour < BOOKING_CLOSE_HOUR;
 }
 
 function afterHoursBooking() {
   return {
     type: 'text',
-    text: 'ขณะนี้อยู่นอกเวลารับจองค่ะ\n\nระบบตอบกลับอัตโนมัติยังสามารถช่วยตรวจสอบรอบรถเบื้องต้นได้\nแต่การจองที่นั่งและการยืนยันตั๋ว แอดมินจะดูแลในเวลา 07.00-21.00 น.\n\nหากเป็นเรื่องเร่งด่วน สามารถโทร 092-774-4341 ได้ค่ะ'
+    text: 'ขณะนี้อยู่นอกเวลารับจองอัตโนมัติค่ะ 🙏\n\nระบบรับจองอัตโนมัติได้ตั้งแต่เวลา 07.00-22.00 น. ของทุกวัน\nหลัง 22.00 น. กรุณาเริ่มจองใหม่พรุ่งนี้ตอนเช้าค่ะ\n\nหากเป็นเรื่องเร่งด่วน สามารถโทร 092-774-4341 ได้ค่ะ'
   };
 }
 
@@ -738,6 +751,10 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
 
 async function slipMessage(event) {
   const booking = userState(event.source.userId).booking;
+  if (booking?.step === 'awaiting_slip' && !isBookingOpen()) {
+    setState(event.source.userId, { booking: null });
+    return afterHoursBooking();
+  }
   if (processedSlipMessageIds.has(event.message.id)) {
     return { type: 'text', text: 'ได้รับสลิปนี้แล้วค่ะ ระบบกำลังดำเนินการจากรูปเดิมอยู่ ไม่ต้องส่งซ้ำค่ะ' };
   }
