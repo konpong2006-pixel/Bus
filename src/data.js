@@ -75,6 +75,12 @@ function busPhoneMap(rows) {
     .map(([busNumber, phones]) => [busNumber, [...phones][0]]));
 }
 
+function cleanDriverPhone(value) {
+  const text = String(value ?? '').trim();
+  if (/เลขรถซ้ำ|กรอก.*เอง|ไม่พบ/.test(text)) return '';
+  return text;
+}
+
 function routeTab(routeId) {
   if (routeId === 'RY-KOR') return 'ราคา ระยอง-โคราช';
   if (routeId === 'KOR-RY') return 'ราคา โคราช-ระยอง';
@@ -168,7 +174,7 @@ async function loadSheetData() {
       const seats = row[seatsIndex];
       const note = row[noteIndex];
       const busNumber = normalizeBusNumber(row[busNumberIndex]);
-      const driverPhone = row[driverPhoneIndex] || driverPhonesByBus.get(busNumber);
+      const driverPhone = cleanDriverPhone(row[driverPhoneIndex]) || driverPhonesByBus.get(busNumber);
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
       if (!route) return null;
       return {
