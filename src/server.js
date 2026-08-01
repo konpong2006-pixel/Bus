@@ -490,7 +490,7 @@ async function dateMessage(userId, text) {
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
   if (/เริ่มใหม่|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
-  if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
+  if (/จอง|ซื้อตั๋ว/.test(text)) return bookingModePrompt();
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId);
   const date = parseTypedDate(text);
   if (!date) return unclearHandoffToAdmin(userId);
@@ -656,18 +656,27 @@ async function dateButtons() {
   });
 }
 
+function bookingModePrompt() {
+  return quick(`ต้องการจองแบบไหนคะ 🎫
+
+🤖 จองตั๋วอัตโนมัติ
+ระบบจะพาเลือกวันที่ จุดขึ้น จุดลง รอบรถ และชำระเงินในแชทนี้ค่ะ
+
+👤 จองกับแอดมิน
+แอดมินจะเข้ามาดูแลและตอบในแชทนี้ค่ะ`, [
+    button('จองอัตโนมัติ', 'action=auto_booking'),
+    button('จองกับแอดมิน', 'action=contact_admin')
+  ]);
+}
+
 async function start(userId) {
   state.set(userId, {});
-  const buttons = await dateButtons();
   return [
     {
       type: 'text',
       text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
     },
-    quick('📅 กรุณาเลือกวันที่เดินทางค่ะ\n\n🔴 ตัวอย่างการพิมพ์: 2 หรือ 2/8 หรือ วันที่ 2\n👇 กดเลขวันที่ด้านล่างได้เลยค่ะ\n\nหากต้องการสอบถามเพิ่มเติม จองช่วงเทศกาล หรือจองล่วงหน้าเดือนถัดไป\nสามารถกดปุ่ม "ติดต่อแอดมิน" ได้เลยค่ะ 😊', [
-      ...buttons,
-      button('ติดต่อแอดมิน', 'action=contact_admin')
-    ])
+    bookingModePrompt()
   ];
 }
 
@@ -941,7 +950,7 @@ async function result(userId, routeId, departureTime) {
   return {
     type: 'text',
     text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\n⏰ รอบออกจาก${route.origin}: ${departureTime} น.\n📍 จุดขึ้น: ${pickup.name}\n🏁 จุดลง: ${dropoff.name}`,
-    quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
+    quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('ติดต่อแอดมิน', 'action=contact_admin'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
 }
 
@@ -969,7 +978,7 @@ async function handleEvent(event) {
     if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
       const value = cleanCustomerText(event.message.text);
       state.set(userId, {});
-      message = /จอง/.test(value) ? await askBookingDate(userId) : await start(userId);
+      message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
     } else {
       message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
     }
@@ -980,7 +989,8 @@ async function handleEvent(event) {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = await start(userId);
-    if (action === 'start_booking') message = await askBookingDate(userId);
+    if (action === 'start_booking') message = bookingModePrompt();
+    if (action === 'auto_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId);
     if (action === 'date') {
       setState(userId, { date: params.get('value'), flowStep: 'pickup' });
