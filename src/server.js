@@ -218,17 +218,17 @@ async function askBookingDate(userId) {
     setState(userId, { booking: selectedBooking });
     return {
       type: 'text',
-      text: '📌 กรุณาแจ้งจุดขึ้นพิเศษหน่อยค่ะ\nเช่น หน้าบิ๊กซี / สะพานลอย / จุดนัดรับใกล้เคียง\n\nถ้าขึ้นที่จุดหลัก ให้พิมพ์ - หรือ บขส ได้เลยค่ะ'
+      text: '📌 กรุณาแจ้งจุดขึ้นพิเศษค่ะ\n\nพิมพ์ได้ เช่น หน้าบิ๊กซี, สะพานลอย, จุดนัดรับใกล้เคียง\nถ้าขึ้นที่จุดหลัก ให้พิมพ์ - หรือ บขส ได้เลยค่ะ'
     };
   }
 
   const { date } = userState(userId);
   if (date) {
     setState(userId, { booking: { step: 'originProvince', date } });
-    return { type: 'text', text: `📅 ใช้วันที่ ${thaiDate(date)} ค่ะ\n\n🚍 เดินทางจากจังหวัดไหนคะ` };
+    return { type: 'text', text: `📅 ใช้วันที่ ${thaiDate(date)} ค่ะ\n\n🚍 เดินทางจากจังหวัดไหนคะ\nพิมพ์ได้ เช่น โคราช, ระยอง, ชลบุรี` };
   }
   setState(userId, { booking: { step: 'date' } });
-  return quick('📅 เดินทางวันที่เท่าไหร่คะ\nกรุณากดเลือกเฉพาะวันที่ระบบมีรอบรถค่ะ', [
+  return quick('📅 เดินทางวันที่เท่าไหร่คะ\n\nกดเลือกเลขวันที่ด้านล่าง หรือพิมพ์ได้ เช่น 2, 2/8, วันที่ 2\nกรุณาเลือกเฉพาะวันที่ระบบมีรอบรถค่ะ', [
     ...await dateButtons(),
     button('ติดต่อแอดมิน', 'action=contact_admin')
   ]);
@@ -395,39 +395,39 @@ async function handleBookingText(userId, text) {
 
   if (current.step === 'date') {
     const date = parseTypedDate(value);
-    if (!date) return bookingAsk('📅 ขอวันที่เดินทางอีกครั้งค่ะ เช่น 25 หรือ 25/07/69');
+    if (!date) return bookingAsk('📅 ขอวันที่เดินทางอีกครั้งค่ะ\nพิมพ์ได้ เช่น 25, 25/07/69, วันที่ 25');
     setState(userId, { booking: { ...current, step: 'originProvince', date } });
-    return bookingAsk('🚍 เดินทางจากจังหวัดไหนคะ');
+    return bookingAsk('🚍 เดินทางจากจังหวัดไหนคะ\nพิมพ์ได้ เช่น โคราช, ระยอง, ชลบุรี');
   }
 
   if (current.step === 'originProvince') {
     setState(userId, { booking: { ...current, step: 'destinationProvince', originProvince: value || text.trim() } });
-    return bookingAsk('🏁 ต้องการไปลงจังหวัดไหนคะ');
+    return bookingAsk('🏁 ต้องการไปลงจังหวัดไหนคะ\nพิมพ์ได้ เช่น โคราช, ระยอง, ชลบุรี');
   }
 
   if (current.step === 'destinationProvince') {
     setState(userId, { booking: { ...current, step: 'departureTime', destinationProvince: value || text.trim() } });
-    return bookingAsk('⏰ ต้องการรอบกี่โมงคะ');
+    return bookingAsk('⏰ ต้องการรอบกี่โมงคะ\nพิมพ์ได้ เช่น 06:00, 7:30, ระยอง 06:00');
   }
 
   if (current.step === 'departureTime') {
     setState(userId, { booking: { ...current, step: 'pickupPoint', departureTime: value || text.trim() } });
-    return bookingAsk('📍 ขึ้นรถตรงจุดไหนคะ');
+    return bookingAsk('📍 ขึ้นรถตรงจุดไหนคะ\nพิมพ์ชื่อจุดขึ้นได้เลย เช่น โคราช, ระยอง, กบินทร์บุรี');
   }
 
   if (current.step === 'pickupPoint') {
     setState(userId, { booking: { ...current, step: 'seats', pickupPoint: value || text.trim() } });
-    return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
+    return bookingAsk('🎟️ จองกี่ที่นั่งคะ\nพิมพ์ได้ เช่น 1, 2 คน, 1 ที่นั่ง');
   }
 
   if (current.step === 'pickupSpecial') {
     setState(userId, { booking: { ...current, step: 'seats', pickupSpecial: normalizePickupSpecial(text, current.pickupPoint) } });
-    return bookingAsk('🎟️ จองกี่ที่นั่งคะ');
+    return bookingAsk('🎟️ จองกี่ที่นั่งคะ\nพิมพ์ได้ เช่น 1, 2 คน, 1 ที่นั่ง');
   }
 
   if (current.step === 'seats') {
     const seats = parseSeats(value);
-    if (!seats) return bookingAsk('🎟️ ขอจำนวนที่นั่งเป็นตัวเลขค่ะ เช่น 1 หรือ 2');
+    if (!seats) return bookingAsk('🎟️ ขอจำนวนที่นั่งอีกครั้งค่ะ\nพิมพ์ได้ เช่น 1, 2 คน, 1 ที่นั่ง');
     setState(userId, { booking: await withLockedPrice({ ...current, step: 'contact', seats }) });
     return bookingAsk(contactPrompt());
   }
@@ -517,7 +517,9 @@ async function typedScheduleChoice(userId, text) {
   const typedTime = parseTypedTime(text);
   if (!typedTime) {
     const value = cleanCustomerText(text);
-    if (/รอบ|กี่โมง|มี.*บ้าง|มี.*ไหม|มี.*มั้ย/.test(value)) return scheduleChoices(userId);
+    if (/รอบ|กี่โมง|มี.*บ้าง|มี.*ไหม|มี.*มั้ย|เช้า|บ่าย|เย็น/.test(value)) {
+      return scheduleChoices(userId, 'ระบบยังต้องให้เลือกรอบเป็นเวลาแน่นอนค่ะ\nกรุณาเลือกรอบจากรายการด้านล่าง หรือพิมพ์ตามตัวอย่างได้เลยค่ะ\n\n');
+    }
     return null;
   }
   const routes = await routesForJourney(current.pickupId, current.dropoffId);
@@ -529,7 +531,7 @@ async function typedScheduleChoice(userId, text) {
       return result(userId, route.id, schedule.departureTime);
     }
   }
-  return { type: 'text', text: `ไม่พบรอบ ${typedTime} น. สำหรับเส้นทางนี้ค่ะ\nกรุณากดเลือกรอบจากปุ่มด้านล่าง หรือพิมพ์เวลาใหม่อีกครั้งค่ะ` };
+  return scheduleChoices(userId, `ไม่พบรอบ ${typedTime} น. สำหรับเส้นทางนี้ค่ะ\nกรุณาเลือกรอบจากรายการด้านล่าง หรือพิมพ์เวลาใหม่อีกครั้งค่ะ\n\n`);
 }
 
 async function typedStopChoice(userId, text) {
@@ -876,7 +878,7 @@ ${stopList}
 กรุณากดเลือกจุดลง หรือพิมพ์ชื่อจุดลงได้เลยค่ะ`, options);
 }
 
-async function scheduleChoices(userId) {
+async function scheduleChoices(userId, note = '') {
   const { date, pickupId, dropoffId } = userState(userId);
   const routes = await routesForJourney(pickupId, dropoffId);
   const nested = await Promise.all(routes.map(async (route) => {
@@ -901,7 +903,7 @@ async function scheduleChoices(userId) {
     ]);
   }
   const scheduleList = choices.map((choice) => `- ${choice.label}`).join('\n');
-  return quick(`เลือกรอบรถ
+  return quick(`${note}เลือกรอบรถ
 วันที่ ${thaiDate(date)}
 
 รอบที่มีตามเงื่อนไขนี้:
@@ -923,6 +925,16 @@ async function result(userId, routeId, departureTime) {
     text: `🚌 ${route.name}\n📅 ${thaiDate(date)}\n\n⏰ รอบออกจาก${route.origin}: ${departureTime} น.\n📍 จุดขึ้น: ${pickup.name}\n🏁 จุดลง: ${dropoff.name}`,
     quickReply: { items: [button('จองตั๋ว', 'action=start_booking'), button('เช็กรอบรถอีกครั้ง', 'action=restart')] }
   };
+}
+
+function fallbackMessage() {
+  return quick(`ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏
+
+กรุณากด เริ่มใหม่ เพื่อเลือกข้อมูลอีกครั้ง
+หรือกด ติดต่อแอดมิน หากไม่สะดวกใช้งานระบบอัตโนมัติค่ะ`, [
+    button('เริ่มใหม่', 'action=restart'),
+    button('ติดต่อแอดมิน', 'action=contact_admin')
+  ]);
 }
 
 async function handleEvent(event) {
@@ -956,7 +968,7 @@ async function handleEvent(event) {
     if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value'), flowStep: 'schedule' }); message = await scheduleChoices(userId); }
     if (action === 'schedule') { setState(userId, { flowStep: 'result' }); message = await result(userId, params.get('route'), params.get('time')); }
   }
-  if (!message) message = { type: 'text', text: 'พิมพ์ข้อความใด ๆ เพื่อเริ่มเช็กรอบรถค่ะ' };
+  if (!message) message = fallbackMessage();
   await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
     body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(message) ? message : [message] })
