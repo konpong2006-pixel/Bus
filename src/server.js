@@ -1062,21 +1062,32 @@ async function handleEvent(event) {
   if (!event.replyToken) return;
   if (!botEnabled()) return;
   const userId = event.source.userId;
+
+  if (event.type === 'message' && event.message.type === 'text') {
+    const commandMessage = sourceIdMessage(event, event.message.text)
+      ?? await testerCommandMessage(event, event.message.text);
+    if (commandMessage) {
+      await fetch('https://api.line.me/v2/bot/message/reply', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+        body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(commandMessage) ? commandMessage : [commandMessage] })
+      });
+      return;
+    }
+  }
+
   if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId, event.source)) return;
   if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId, event.source)) setState(userId, { afterHoursNoticeSent: false });
   let message;
   if (!isBookingOpenFor(userId, event.source)) message = closeBookingAfterHours(userId);
   else if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    message = await testerCommandMessage(event, event.message.text);
-    if (!message && userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
+    if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
     if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
       const value = cleanCustomerText(event.message.text);
       state.set(userId, {});
       message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
-    } else if (!message) {
-      message = sourceIdMessage(event, event.message.text)
-        ?? await typedBookingModeMessage(userId, event.message.text, event.source)
+    } else {
+      message = await typedBookingModeMessage(userId, event.message.text, event.source)
         ?? await dateMessage(userId, event.message.text, event.source);
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
