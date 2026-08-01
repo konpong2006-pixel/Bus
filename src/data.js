@@ -62,17 +62,14 @@ function uniqueSchedules(schedules) {
 }
 
 function busPhoneMap(rows) {
-  const grouped = new Map();
+  const phonesByBus = new Map();
   for (const row of rows) {
     const busNumber = normalizeBusNumber(row[1]);
     const phone = String(row[2] ?? '').trim();
     if (!busNumber || !phone) continue;
-    if (!grouped.has(busNumber)) grouped.set(busNumber, new Set());
-    grouped.get(busNumber).add(phone);
+    if (!phonesByBus.has(busNumber)) phonesByBus.set(busNumber, phone);
   }
-  return new Map([...grouped]
-    .filter(([, phones]) => phones.size === 1)
-    .map(([busNumber, phones]) => [busNumber, [...phones][0]]));
+  return phonesByBus;
 }
 
 function cleanDriverPhone(value) {
