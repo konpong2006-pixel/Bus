@@ -23,9 +23,14 @@ const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 function chunk(items, size = 13) { return items.slice(0, size); }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
+function closeBookingAfterHours(userId) {
+  setState(userId, { afterHoursNoticeSent: true, handoffToAdmin: false, booking: null });
+  return afterHoursBooking();
+}
 function handoffToAdmin(userId) {
+  if (!isBookingOpen()) return closeBookingAfterHours(userId);
   setState(userId, { handoffToAdmin: true, booking: null });
-  return isBookingOpen() ? adminContact() : afterHoursBooking();
+  return adminContact();
 }
 function unclearHandoffToAdmin(userId) {
   setState(userId, { handoffToAdmin: true, booking: null });
@@ -223,8 +228,7 @@ async function selectedTripBooking(userId) {
 
 async function askBookingDate(userId) {
   if (!isBookingOpen()) {
-    setState(userId, { booking: null });
-    return afterHoursBooking();
+    return closeBookingAfterHours(userId);
   }
 
   const selectedBooking = await selectedTripBooking(userId);
@@ -397,8 +401,7 @@ async function handleBookingText(userId, text) {
   if (!current?.step) return null;
 
   if (!isBookingOpen()) {
-    setState(userId, { booking: null });
-    return afterHoursBooking();
+    return closeBookingAfterHours(userId);
   }
 
   const value = cleanCustomerText(text);
@@ -480,7 +483,7 @@ async function dateMessage(userId, text) {
     setState(userId, { date, flowStep: 'pickup' });
     return pickupChoices(userId);
   }
-  return bookingContact();
+  return bookingContact(userId);
 }
 
 async function inferJourneyFromText(userId, text) {
@@ -667,7 +670,7 @@ function isBookingOpen() {
 function afterHoursBooking() {
   return {
     type: 'text',
-    text: 'ขณะนี้อยู่นอกเวลารับจองอัตโนมัติค่ะ 🙏\n\nระบบรับจองอัตโนมัติได้ตั้งแต่เวลา 07.00-22.00 น. ของทุกวัน\nหลัง 22.00 น. กรุณาเริ่มจองใหม่พรุ่งนี้ตอนเช้าค่ะ\n\nหากเป็นเรื่องเร่งด่วน สามารถโทร 092-774-4341 ได้ค่ะ'
+    text: 'ขณะนี้ปิดรับการจองอัตโนมัติแล้วค่ะ 🙏\n\nระบบรับจองอัตโนมัติได้ตั้งแต่เวลา 07.00-22.00 น. ของทุกวัน\nกรุณาเริ่มจองใหม่พรุ่งนี้ตอนเช้าค่ะ\n\nหากเป็นเรื่องเร่งด่วน สามารถโทร 092-774-4341 ได้ค่ะ'
   };
 }
 
@@ -687,8 +690,9 @@ function withPaymentQr(message) {
   return qr ? [message, qr] : message;
 }
 
-function bookingContact() {
-  return isBookingOpen() ? withPaymentQr(adminContact()) : afterHoursBooking();
+function bookingContact(userId = null) {
+  if (isBookingOpen()) return withPaymentQr(adminContact());
+  return userId ? closeBookingAfterHours(userId) : afterHoursBooking();
 }
 
 async function downloadLineContent(messageId) {
@@ -773,8 +777,7 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
 async function slipMessage(event) {
   const booking = userState(event.source.userId).booking;
   if (booking?.step === 'awaiting_slip' && !isBookingOpen()) {
-    setState(event.source.userId, { booking: null });
-    return afterHoursBooking();
+    return closeBookingAfterHours(event.source.userId);
   }
   if (processedSlipMessageIds.has(event.message.id)) {
     return { type: 'text', text: 'ได้รับสลิปนี้แล้วค่ะ ระบบกำลังดำเนินการจากรูปเดิมอยู่ ไม่ต้องส่งซ้ำค่ะ' };
@@ -936,8 +939,11 @@ function fallbackMessage() {
 async function handleEvent(event) {
   if (!event.replyToken) return;
   const userId = event.source.userId;
+  if (userState(userId).afterHoursNoticeSent && !isBookingOpen()) return;
+  if (userState(userId).afterHoursNoticeSent && isBookingOpen()) setState(userId, { afterHoursNoticeSent: false });
   let message;
-  if (event.type === 'follow') message = await start(userId);
+  if (!isBookingOpen()) message = closeBookingAfterHours(userId);
+  else if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
     if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
