@@ -176,7 +176,6 @@ async function loadSheetData() {
   const dateIndex = columnIndex(scheduleHeaders, ['วันที่'], 0);
   const routeIndex = columnIndex(scheduleHeaders, ['เส้นทาง'], 1);
   const departureIndex = columnIndex(scheduleHeaders, ['เวลาออกจากต้นทาง'], 2);
-  const arrivalIndex = columnIndex(scheduleHeaders, ['เวลาถึงปลายทาง'], 3);
   const statusIndex = columnIndex(scheduleHeaders, ['สถานะรอบ'], 5);
   const seatsIndex = columnIndex(scheduleHeaders, ['จำนวนที่นั่ง'], 6);
   const noteIndex = columnIndex(scheduleHeaders, ['หมายเหตุ'], 7);
@@ -187,7 +186,6 @@ async function loadSheetData() {
     .flatMap((row) => {
       const routeName = row[routeIndex];
       const departureTime = row[departureIndex];
-      const arrivalTime = row[arrivalIndex];
       const status = row[statusIndex];
       const seats = row[seatsIndex];
       const note = row[noteIndex];
@@ -200,7 +198,7 @@ async function loadSheetData() {
         date: String(date).slice(0, 10),
         routeId: route.id,
         departureTime: normalizeTime(departureTime),
-        arrivalTime: arrivalTime ? normalizeTime(arrivalTime) : '',
+        arrivalTime: '',
         status: String(status || '').trim(),
         seats: parseNumber(seats) || null,
         note: String(note || '').trim(),
