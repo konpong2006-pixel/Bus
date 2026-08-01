@@ -258,7 +258,18 @@ function parseContact(text) {
     .replace(/ชื่อผู้จอง|ผู้จอง|ชื่อ|เบอร์โทร|เบอร์|โทร|[:：]/g, '')
     .replace(phoneMatch?.[0] ?? '', '')
     .trim();
-  return { name: name || cleaned || text.trim(), phone };
+  return { name, phone };
+}
+
+function contactPrompt() {
+  return `👤 ขอชื่อผู้จองและเบอร์โทรค่ะ
+
+พิมพ์รวมกันได้ เช่น
+คุณกมลพร 094-172-4569
+
+หรือส่งแยกก็ได้ค่ะ เช่น
+คุณกมลพร
+แล้วค่อยส่งเบอร์โทรในข้อความถัดไป`;
 }
 
 function normalizePickupSpecial(text, fallback) {
@@ -418,12 +429,19 @@ async function handleBookingText(userId, text) {
     const seats = parseSeats(value);
     if (!seats) return bookingAsk('🎟️ ขอจำนวนที่นั่งเป็นตัวเลขค่ะ เช่น 1 หรือ 2');
     setState(userId, { booking: await withLockedPrice({ ...current, step: 'contact', seats }) });
-    return bookingAsk('👤 ขอชื่อผู้จองและเบอร์โทรค่ะ');
+    return bookingAsk(contactPrompt());
   }
 
   if (current.step === 'contact') {
     const contact = parseContact(value);
-    const booking = await withLockedPrice({ ...current, step: 'awaiting_slip', customerName: contact.name, phone: contact.phone });
+    const customerName = contact.name || current.customerName || '';
+    const phone = contact.phone || current.phone || '';
+    if (!customerName || !phone) {
+      setState(userId, { booking: { ...current, step: 'contact', customerName, phone } });
+      if (!customerName) return bookingAsk('👤 ขอชื่อผู้จองค่ะ เช่น คุณกมลพร');
+      return bookingAsk('📞 ขอเบอร์โทรผู้จองค่ะ เช่น 094-172-4569');
+    }
+    const booking = await withLockedPrice({ ...current, step: 'awaiting_slip', customerName, phone });
     setState(userId, { booking });
     const summary = { type: 'text', text: bookingSummary(booking) };
     return withPaymentQr(summary);
