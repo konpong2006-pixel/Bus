@@ -123,15 +123,21 @@ SAVE_SLIP_TO_DRIVE=false
 ```text
 ADMIN_LINE_TARGET_ID=ใส่ groupId หรือ userId แอดมิน
 LINE_TEST_USER_IDS=ใส่ userId คนทดสอบ
+LINE_TEST_GROUP_IDS=ใส่ groupId กลุ่มทดสอบ
 ```
 
-ถ้ามีหลาย test user ให้คั่นด้วย comma:
+ถ้ามีหลาย test user หรือหลายกลุ่ม ให้คั่นด้วย comma:
 
 ```text
 LINE_TEST_USER_IDS=Uxxxx,Uyyyy
+LINE_TEST_GROUP_IDS=Cxxxx,Cyyyy
 ```
 
-`LINE_TEST_USER_IDS` ใช้ให้คนนั้นคุยกับบอทได้หลัง 22.00 น. แม้ลูกค้าปกติถูกปิดรับจองแล้ว
+`LINE_TEST_USER_IDS` ใช้เพิ่ม tester เป็นรายคน
+
+`LINE_TEST_GROUP_IDS` ใช้ให้ทั้งกลุ่มเป็นกลุ่มทดสอบ ถ้าไม่ได้ตั้งค่านี้ ระบบจะใช้ `ADMIN_LINE_TARGET_ID` เป็นกลุ่มทดสอบให้อัตโนมัติเมื่อค่านั้นเป็น groupId
+
+tester จะคุยกับบอทได้หลัง 22.00 น. แม้ลูกค้าปกติถูกปิดรับจองแล้ว
 
 ## LINE OA Setup
 
@@ -161,7 +167,7 @@ https://ชื่อ-render-service.onrender.com/webhook
 
 คำสั่งสำหรับ Tester เท่านั้น:
 
-บัญชีที่จะใช้คำสั่งนี้ได้ต้องอยู่ใน `LINE_TEST_USER_IDS`
+บัญชีที่จะใช้คำสั่งนี้ได้ต้องอยู่ใน `LINE_TEST_USER_IDS` หรือพิมพ์จากกลุ่มที่อยู่ใน `LINE_TEST_GROUP_IDS`
 
 - `คำสั่งเทส` ดูคำสั่งทั้งหมด
 - `สถานะเทส` ดูสถานะบอทและสถานะแชทนี้
@@ -219,7 +225,7 @@ https://ชื่อ-render-service.onrender.com/webhook
 
 - ลูกค้าปกติจะได้ข้อความปิดรับจอง 1 ครั้ง
 - หลังจากนั้นบอทจะไม่ตอบซ้ำ
-- `LINE_TEST_USER_IDS` ยังใช้บอทได้ตลอด 24 ชม.
+- `LINE_TEST_USER_IDS` และ `LINE_TEST_GROUP_IDS` ยังใช้บอทได้ตลอด 24 ชม.
 
 ข้อความปิดรับจอง:
 
@@ -382,7 +388,7 @@ git push
 - ถ้า LINE webhook verify ขึ้น 500 ให้ดู Render logs ก่อน สาเหตุบ่อยคือ `LINE_CHANNEL_SECRET` ไม่ตรง
 - ถ้าบอทไม่ตอบ ให้เช็ก `BOT_ENABLED`
 - ถ้าเลย 22.00 น. ลูกค้าปกติจะไม่ตอบซ้ำโดยตั้งใจ
-- ถ้าต้องการเทสต์หลัง 22.00 น. ให้ใส่ userId ใน `LINE_TEST_USER_IDS`
+- ถ้าต้องการเทสต์หลัง 22.00 น. ให้ใส่ userId ใน `LINE_TEST_USER_IDS` หรือ groupId ใน `LINE_TEST_GROUP_IDS`
 
 ## Health check
 

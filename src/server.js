@@ -21,6 +21,12 @@ const button = (label, data, displayText = label) => ({ type: 'action', action: 
 const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 
 function chunk(items, size = 13) { return items.slice(0, size); }
+function envList(...keys) {
+  return keys
+    .flatMap((key) => String(process.env[key] || '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
 function closeBookingAfterHours(userId) {
@@ -28,25 +34,27 @@ function closeBookingAfterHours(userId) {
   return afterHoursBooking();
 }
 function afterHoursTestUserIds() {
-  return String(process.env.LINE_TEST_USER_IDS || process.env.LINE_TEST_USER_ID || '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return envList('LINE_TEST_USER_IDS', 'LINE_TEST_USER_ID');
 }
-function canUseAfterHours(userId) {
-  return afterHoursTestUserIds().includes(userId);
+function afterHoursTestGroupIds() {
+  return envList('LINE_TEST_GROUP_IDS', 'LINE_TEST_GROUP_ID', 'ADMIN_LINE_TARGET_ID');
 }
-function isTesterUser(userId) {
-  return canUseAfterHours(userId);
+function canUseAfterHours(userId, source = null) {
+  return afterHoursTestUserIds().includes(userId)
+    || (source?.groupId && afterHoursTestGroupIds().includes(source.groupId))
+    || (source?.roomId && afterHoursTestGroupIds().includes(source.roomId));
 }
-function isBookingOpenFor(userId) {
-  return isBookingOpen() || canUseAfterHours(userId);
+function isTesterUser(userId, source = null) {
+  return canUseAfterHours(userId, source);
+}
+function isBookingOpenFor(userId, source = null) {
+  return isBookingOpen() || canUseAfterHours(userId, source);
 }
 function botEnabled() {
   return !['false', '0', 'off', 'no'].includes(String(process.env.BOT_ENABLED ?? 'true').trim().toLowerCase());
 }
-function handoffToAdmin(userId) {
-  if (!isBookingOpenFor(userId)) return closeBookingAfterHours(userId);
+function handoffToAdmin(userId, source = null) {
+  if (!isBookingOpenFor(userId, source)) return closeBookingAfterHours(userId);
   setState(userId, { handoffToAdmin: true, booking: null });
   return adminContact();
 }
@@ -225,7 +233,7 @@ function sourceIdMessage(event, text) {
 
 async function testerCommandMessage(event, text) {
   const userId = event.source.userId;
-  if (!userId || !isTesterUser(userId)) return null;
+  if (!isTesterUser(userId, event.source)) return null;
   const value = cleanCustomerText(text);
 
   if (['คำสั่งเทส', 'คำสั่งทดสอบ', 'tester', '/test', 'เทสเตอร์'].includes(value)) {
@@ -233,7 +241,8 @@ async function testerCommandMessage(event, text) {
       type: 'text',
       text: `🧪 คำสั่งสำหรับ Tester
 
-พิมพ์ได้เฉพาะบัญชีที่อยู่ใน LINE_TEST_USER_IDS เท่านั้น
+พิมพ์ได้เฉพาะบัญชีที่อยู่ใน LINE_TEST_USER_IDS
+หรือพิมพ์จากกลุ่มที่อยู่ใน LINE_TEST_GROUP_IDS เท่านั้น
 
 • คำสั่งเทส = ดูคำสั่งทั้งหมด
 • สถานะเทส = ดูสถานะบอทและสถานะแชทนี้
@@ -253,7 +262,7 @@ async function testerCommandMessage(event, text) {
 
 BOT_ENABLED: ${botEnabled() ? 'true' : 'false'}
 เวลาจองปกติเปิดอยู่: ${isBookingOpen() ? 'ใช่' : 'ไม่ใช่'}
-Tester ข้ามเวลาได้: ${canUseAfterHours(userId) ? 'ใช่' : 'ไม่ใช่'}
+Tester ข้ามเวลาได้: ${canUseAfterHours(userId, event.source) ? 'ใช่' : 'ไม่ใช่'}
 SIMULATE_SLIP_OK: ${String(process.env.SIMULATE_SLIP_OK ?? 'false')}
 SAVE_SLIP_TO_DRIVE: ${String(process.env.SAVE_SLIP_TO_DRIVE ?? 'false')}
 Google Sheet: ${backendSheetConfigured() ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม'}
@@ -312,8 +321,8 @@ async function selectedTripBooking(userId) {
   };
 }
 
-async function askBookingDate(userId) {
-  if (!isBookingOpenFor(userId)) {
+async function askBookingDate(userId, source = null) {
+  if (!isBookingOpenFor(userId, source)) {
     return closeBookingAfterHours(userId);
   }
 
@@ -482,11 +491,11 @@ function customerTicketText(booking, paidText = '') {
 โอนบัญชีเพจรถร่วมวิศวกรเสนา`;
 }
 
-async function handleBookingText(userId, text) {
+async function handleBookingText(userId, text, source = null) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
 
-  if (!isBookingOpenFor(userId)) {
+  if (!isBookingOpenFor(userId, source)) {
     return closeBookingAfterHours(userId);
   }
 
@@ -553,8 +562,8 @@ async function handleBookingText(userId, text) {
   return null;
 }
 
-async function dateMessage(userId, text) {
-  const booking = await handleBookingText(userId, text);
+async function dateMessage(userId, text, source = null) {
+  const booking = await handleBookingText(userId, text, source);
   if (booking) return booking;
   const typedSchedule = await typedScheduleChoice(userId, text);
   if (typedSchedule) return typedSchedule;
@@ -562,7 +571,7 @@ async function dateMessage(userId, text) {
   if (typedChoice) return typedChoice;
   if (/เริ่มใหม่|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
   if (/จอง|ซื้อตั๋ว/.test(text)) return bookingModePrompt();
-  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId);
+  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId, source);
   const date = parseTypedDate(text);
   if (!date) {
     if (isWaitingForCustomerChoice(userId)) return unclearHandoffToAdmin(userId);
@@ -572,7 +581,7 @@ async function dateMessage(userId, text) {
     setState(userId, { date, flowStep: 'pickup' });
     return pickupChoices(userId);
   }
-  return bookingContact(userId);
+  return bookingContact(userId, source);
 }
 
 async function inferJourneyFromText(userId, text) {
@@ -789,8 +798,8 @@ function withPaymentQr(message) {
   return qr ? [message, qr] : message;
 }
 
-function bookingContact(userId = null) {
-  if (isBookingOpenFor(userId)) return withPaymentQr(adminContact());
+function bookingContact(userId = null, source = null) {
+  if (isBookingOpenFor(userId, source)) return withPaymentQr(adminContact());
   return userId ? closeBookingAfterHours(userId) : afterHoursBooking();
 }
 
@@ -875,7 +884,7 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
 
 async function slipMessage(event) {
   const booking = userState(event.source.userId).booking;
-  if (booking?.step === 'awaiting_slip' && !isBookingOpenFor(event.source.userId)) {
+  if (booking?.step === 'awaiting_slip' && !isBookingOpenFor(event.source.userId, event.source)) {
     return closeBookingAfterHours(event.source.userId);
   }
   if (processedSlipMessageIds.has(event.message.id)) {
@@ -1038,13 +1047,13 @@ function fallbackMessage() {
   ]);
 }
 
-async function typedBookingModeMessage(userId, text) {
+async function typedBookingModeMessage(userId, text, source = null) {
   const value = cleanCustomerText(text);
   if (/จอง.*(อัตโนมัติ|ออโต้|auto|bot|บอท)|อัตโนมัติ|ออโต้/.test(value)) {
-    return askBookingDate(userId);
+    return askBookingDate(userId, source);
   }
   if (/(จอง|คุย|ติดต่อ|คุยกับ).*(แอดมิน|admin)|แอดมิน/.test(value)) {
-    return handoffToAdmin(userId);
+    return handoffToAdmin(userId, source);
   }
   return null;
 }
@@ -1053,10 +1062,10 @@ async function handleEvent(event) {
   if (!event.replyToken) return;
   if (!botEnabled()) return;
   const userId = event.source.userId;
-  if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId)) return;
-  if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId)) setState(userId, { afterHoursNoticeSent: false });
+  if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId, event.source)) return;
+  if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId, event.source)) setState(userId, { afterHoursNoticeSent: false });
   let message;
-  if (!isBookingOpenFor(userId)) message = closeBookingAfterHours(userId);
+  if (!isBookingOpenFor(userId, event.source)) message = closeBookingAfterHours(userId);
   else if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     message = await testerCommandMessage(event, event.message.text);
@@ -1067,8 +1076,8 @@ async function handleEvent(event) {
       message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
     } else if (!message) {
       message = sourceIdMessage(event, event.message.text)
-        ?? await typedBookingModeMessage(userId, event.message.text)
-        ?? await dateMessage(userId, event.message.text);
+        ?? await typedBookingModeMessage(userId, event.message.text, event.source)
+        ?? await dateMessage(userId, event.message.text, event.source);
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
     if (userState(userId).handoffToAdmin) return;
@@ -1078,8 +1087,8 @@ async function handleEvent(event) {
     const action = params.get('action');
     if (action === 'restart') message = await start(userId);
     if (action === 'start_booking') message = bookingModePrompt();
-    if (action === 'auto_booking') message = await askBookingDate(userId);
-    if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId);
+    if (action === 'auto_booking') message = await askBookingDate(userId, event.source);
+    if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId, event.source);
     if (action === 'date') {
       setState(userId, { date: params.get('value'), flowStep: 'pickup' });
       message = await pickupChoices(userId);
