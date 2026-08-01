@@ -27,6 +27,13 @@ function handoffToAdmin(userId) {
   setState(userId, { handoffToAdmin: true, booking: null });
   return isBookingOpen() ? adminContact() : afterHoursBooking();
 }
+function unclearHandoffToAdmin(userId) {
+  setState(userId, { handoffToAdmin: true, booking: null });
+  return {
+    type: 'text',
+    text: 'ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏\n\nเดี๋ยวให้แอดมินมาตอบต่อนะคะ\nหากต้องการให้บอทเริ่มตอบใหม่ ให้พิมพ์ว่า เริ่มใหม่ หรือ จองตั๋ว ค่ะ'
+  };
+}
 function shouldResumeFromHandoff(text) {
   return /เริ่มใหม่|จองตั๋ว|จองตัว|เช็กรอบ|ตรวจรอบ|ดูรอบ|restart/i.test(cleanCustomerText(text));
 }
@@ -462,20 +469,14 @@ async function dateMessage(userId, text) {
   if (booking) return booking;
   const typedSchedule = await typedScheduleChoice(userId, text);
   if (typedSchedule) return typedSchedule;
-  const inferred = await inferJourneyFromText(userId, text);
-  if (inferred) return inferred;
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
+  if (/เริ่มใหม่|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
   if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId);
   const date = parseTypedDate(text);
-  if (!date) return unclearDateMessage();
+  if (!date) return unclearHandoffToAdmin(userId);
   if (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date))) {
-    const current = userState(userId);
-    if (current.pendingPickupId) {
-      setState(userId, { date, pickupId: current.pendingPickupId, pendingPickupId: null, flowStep: 'dropoff' });
-      return dropoffChoices(userId);
-    }
     setState(userId, { date, flowStep: 'pickup' });
     return pickupChoices(userId);
   }
@@ -554,18 +555,6 @@ async function typedStopChoice(userId, text) {
     if (!dropoff) return null;
     setState(userId, { dropoffId: dropoff.id, flowStep: 'schedule' });
     return scheduleChoices(userId);
-  }
-  if (!current.date) {
-    const pickup = await matchStop(await pickupStops(), text);
-    if (!pickup) return null;
-    setState(userId, { pendingPickupId: pickup.id, flowStep: 'date' });
-    return quick(`รับจุดขึ้นเป็น ${pickup.name} แล้วค่ะ 🚍
-
-ขอวันที่เดินทางอีกครั้งนะคะ
-กรุณากดเลือกเลขวันที่ด้านล่าง หรือพิมพ์เช่น 28, 28/7, วันที่ 28 ค่ะ`, [
-      ...await dateButtons(),
-      button('ติดต่อแอดมิน', 'action=contact_admin')
-    ]);
   }
   return null;
 }
@@ -951,8 +940,13 @@ async function handleEvent(event) {
   if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
-    if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) state.set(userId, {});
-    message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
+    if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
+      const value = cleanCustomerText(event.message.text);
+      state.set(userId, {});
+      message = /จอง/.test(value) ? await askBookingDate(userId) : await start(userId);
+    } else {
+      message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
+    }
   } else if (event.type === 'message' && event.message.type === 'image') {
     if (userState(userId).handoffToAdmin) return;
     message = await slipMessage(event);
@@ -963,14 +957,8 @@ async function handleEvent(event) {
     if (action === 'start_booking') message = await askBookingDate(userId);
     if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId);
     if (action === 'date') {
-      const current = userState(userId);
-      if (current.pendingPickupId) {
-        setState(userId, { date: params.get('value'), pickupId: current.pendingPickupId, pendingPickupId: null, flowStep: 'dropoff' });
-        message = await dropoffChoices(userId);
-      } else {
-        setState(userId, { date: params.get('value'), flowStep: 'pickup' });
-        message = await pickupChoices(userId);
-      }
+      setState(userId, { date: params.get('value'), flowStep: 'pickup' });
+      message = await pickupChoices(userId);
     }
     if (action === 'pickup_page') message = await pickupChoices(userId, params.get('page'));
     if (action === 'pickup') { setState(userId, { pickupId: params.get('value'), flowStep: 'dropoff' }); message = await dropoffChoices(userId); }
