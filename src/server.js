@@ -36,6 +36,9 @@ function afterHoursTestUserIds() {
 function canUseAfterHours(userId) {
   return afterHoursTestUserIds().includes(userId);
 }
+function isTesterUser(userId) {
+  return canUseAfterHours(userId);
+}
 function isBookingOpenFor(userId) {
   return isBookingOpen() || canUseAfterHours(userId);
 }
@@ -217,6 +220,69 @@ function sourceIdMessage(event, text) {
   if (value === 'ขอไอดีแอดมิน') {
     return { type: 'text', text: `userId ของแชทนี้:\n${event.source.userId}` };
   }
+  return null;
+}
+
+async function testerCommandMessage(event, text) {
+  const userId = event.source.userId;
+  if (!userId || !isTesterUser(userId)) return null;
+  const value = cleanCustomerText(text);
+
+  if (['คำสั่งเทส', 'คำสั่งทดสอบ', 'tester', '/test', 'เทสเตอร์'].includes(value)) {
+    return {
+      type: 'text',
+      text: `🧪 คำสั่งสำหรับ Tester
+
+พิมพ์ได้เฉพาะบัญชีที่อยู่ใน LINE_TEST_USER_IDS เท่านั้น
+
+• คำสั่งเทส = ดูคำสั่งทั้งหมด
+• สถานะเทส = ดูสถานะบอทและสถานะแชทนี้
+• รีเซ็ตเทส = ล้างสถานะแชท แล้วเริ่มใหม่
+• เริ่มเทส = เปิดข้อความต้อนรับใหม่
+• กลับบอท = ให้บอทกลับมาตอบ หลังจากส่งต่อแอดมิน
+• ขอไอดีกลุ่ม = ดู groupId ในกลุ่ม
+• ขอไอดีแอดมิน = ดู userId ของแชทนี้`
+    };
+  }
+
+  if (['สถานะเทส', 'สถานะทดสอบ', '/state'].includes(value)) {
+    const current = userState(userId);
+    return {
+      type: 'text',
+      text: `🧪 สถานะระบบทดสอบ
+
+BOT_ENABLED: ${botEnabled() ? 'true' : 'false'}
+เวลาจองปกติเปิดอยู่: ${isBookingOpen() ? 'ใช่' : 'ไม่ใช่'}
+Tester ข้ามเวลาได้: ${canUseAfterHours(userId) ? 'ใช่' : 'ไม่ใช่'}
+SIMULATE_SLIP_OK: ${String(process.env.SIMULATE_SLIP_OK ?? 'false')}
+SAVE_SLIP_TO_DRIVE: ${String(process.env.SAVE_SLIP_TO_DRIVE ?? 'false')}
+Google Sheet: ${backendSheetConfigured() ? 'เชื่อมแล้ว' : 'ยังไม่เชื่อม'}
+
+สถานะแชทนี้:
+${JSON.stringify(current, null, 2).slice(0, 1200) || '{}'}`
+    };
+  }
+
+  if (['รีเซ็ตเทส', 'ล้างสถานะ', 'reset', '/reset'].includes(value)) {
+    state.set(userId, {});
+    return {
+      type: 'text',
+      text: 'รีเซ็ตสถานะเทสของแชทนี้แล้วค่ะ ✅\n\nพิมพ์ เริ่มเทส หรือ จองตั๋ว เพื่อเริ่มใหม่ได้เลยค่ะ'
+    };
+  }
+
+  if (['เริ่มเทส', 'เริ่มทดสอบ', '/start'].includes(value)) {
+    return start(userId);
+  }
+
+  if (['กลับบอท', 'ให้บอทตอบ', 'บอทตอบต่อ'].includes(value)) {
+    setState(userId, { handoffToAdmin: false });
+    return {
+      type: 'text',
+      text: 'เปิดให้บอทกลับมาตอบแชทนี้แล้วค่ะ ✅\n\nพิมพ์ จองตั๋ว หรือ เช็กรอบรถ เพื่อเริ่มต่อได้เลยค่ะ'
+    };
+  }
+
   return null;
 }
 
@@ -982,12 +1048,13 @@ async function handleEvent(event) {
   if (!isBookingOpenFor(userId)) message = closeBookingAfterHours(userId);
   else if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
+    message = await testerCommandMessage(event, event.message.text);
+    if (!message && userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
     if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
       const value = cleanCustomerText(event.message.text);
       state.set(userId, {});
       message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
-    } else {
+    } else if (!message) {
       message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
