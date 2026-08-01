@@ -57,6 +57,11 @@ function unclearHandoffToAdmin(userId) {
 function shouldResumeFromHandoff(text) {
   return /เริ่มใหม่|จองตั๋ว|จองตัว|เช็กรอบ|ตรวจรอบ|ดูรอบ|restart/i.test(cleanCustomerText(text));
 }
+function isWaitingForCustomerChoice(userId) {
+  const current = userState(userId);
+  if (current.booking?.step) return true;
+  return ['pickup', 'dropoff', 'schedule'].includes(current.flowStep);
+}
 function cleanCustomerText(text) {
   return normaliseThaiDigits(String(text ?? '').toLowerCase())
     .replace(/[🙏😊😄😃🙂🥰😍❤️💯✅👌👍✨⭐️]/g, '')
@@ -427,7 +432,7 @@ async function handleBookingText(userId, text) {
 
   if (current.step === 'date') {
     const date = parseTypedDate(value);
-    if (!date) return bookingAsk('📅 ขอวันที่เดินทางอีกครั้งค่ะ\nพิมพ์ได้ เช่น 25, 25/07/69, วันที่ 25');
+    if (!date) return unclearHandoffToAdmin(userId);
     setState(userId, { booking: { ...current, step: 'originProvince', date } });
     return bookingAsk('🚍 เดินทางจากจังหวัดไหนคะ\nพิมพ์ได้ เช่น โคราช, ระยอง, ชลบุรี');
   }
@@ -493,7 +498,10 @@ async function dateMessage(userId, text) {
   if (/จอง|ซื้อตั๋ว/.test(text)) return bookingModePrompt();
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId);
   const date = parseTypedDate(text);
-  if (!date) return unclearHandoffToAdmin(userId);
+  if (!date) {
+    if (isWaitingForCustomerChoice(userId)) return unclearHandoffToAdmin(userId);
+    return unclearDateMessage();
+  }
   if (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date))) {
     setState(userId, { date, flowStep: 'pickup' });
     return pickupChoices(userId);
