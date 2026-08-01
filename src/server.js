@@ -926,8 +926,16 @@ async function handleEvent(event) {
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.post('/webhook', middleware(config), (req, res) => {
-  Promise.all(req.body.events.map(handleEvent)).catch((error) => console.error(error));
+  const events = Array.isArray(req.body?.events) ? req.body.events : [];
+  Promise.all(events.map(handleEvent)).catch((error) => console.error(error));
   res.sendStatus(200);
+});
+app.use((error, req, res, next) => {
+  if (req.path === '/webhook') {
+    console.error('LINE webhook error:', error.message ?? error);
+    return res.status(error.statusCode || 500).send('LINE webhook error');
+  }
+  return next(error);
 });
 
 app.listen(process.env.PORT || 3000, () => console.log(`Bot ready on port ${process.env.PORT || 3000}`));
