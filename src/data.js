@@ -81,6 +81,25 @@ function cleanDriverPhone(value) {
   return text;
 }
 
+function isDailySchedule(value) {
+  return ['ทุกวัน', 'รายวัน', 'ประจำวัน', 'daily'].includes(String(value ?? '').replace(/\s+/g, '').trim().toLowerCase());
+}
+
+function nextDates(days = 30) {
+  const start = new Date(`${bangkokDate()}T12:00:00+07:00`);
+  return Array.from({ length: days }, (_item, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date.toISOString().slice(0, 10);
+  });
+}
+
+function scheduleDates(value) {
+  if (isDailySchedule(value)) return nextDates();
+  const date = String(value ?? '').slice(0, 10);
+  return date ? [date] : [];
+}
+
 function routeTab(routeId) {
   if (routeId === 'RY-KOR') return 'ราคา ระยอง-โคราช';
   if (routeId === 'KOR-RY') return 'ราคา โคราช-ระยอง';
@@ -164,9 +183,8 @@ async function loadSheetData() {
   const busNumberIndex = columnIndex(scheduleHeaders, ['เลขรถ/เบอร์รถ', 'เบอร์รถ', 'เลขรถ'], 8);
   const driverPhoneIndex = columnIndex(scheduleHeaders, ['เบอร์คนขับ', 'โทรคนขับ', 'เบอร์โทรคนขับ'], 9);
   const schedules = uniqueSchedules(scheduleRows
-    .filter((row) => row[dateIndex] && row[routeIndex] && row[departureIndex] && scheduleConfirmed(row[statusIndex]))
-    .map((row) => {
-      const date = row[dateIndex];
+    .filter((row) => scheduleDates(row[dateIndex]).length && row[routeIndex] && row[departureIndex] && scheduleConfirmed(row[statusIndex]))
+    .flatMap((row) => {
       const routeName = row[routeIndex];
       const departureTime = row[departureIndex];
       const arrivalTime = row[arrivalIndex];
@@ -176,8 +194,8 @@ async function loadSheetData() {
       const busNumber = normalizeBusNumber(row[busNumberIndex]);
       const driverPhone = cleanDriverPhone(row[driverPhoneIndex]) || driverPhonesByBus.get(busNumber);
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
-      if (!route) return null;
-      return {
+      if (!route) return [];
+      return scheduleDates(row[dateIndex]).map((date) => ({
         id: `${date}-${route.id}-${normalizeTime(departureTime)}`,
         date: String(date).slice(0, 10),
         routeId: route.id,
@@ -189,7 +207,7 @@ async function loadSheetData() {
         busNumber,
         driverPhone: String(driverPhone || '').trim(),
         active: true
-      };
+      }));
     })
     .filter(Boolean));
 
