@@ -377,12 +377,8 @@ function parseContact(text) {
 function contactPrompt() {
   return `👤 ขอชื่อผู้จองและเบอร์โทรค่ะ
 
-พิมพ์รวมกันได้ เช่น
-คุณกมลพร 094-172-4569
-
-หรือส่งแยกก็ได้ค่ะ เช่น
-คุณกมลพร
-แล้วค่อยส่งเบอร์โทรในข้อความถัดไป`;
+ตัวอย่าง
+- คุณกมลพร 094-172-4569`;
 }
 
 function normalizePickupSpecial(text, fallback) {
