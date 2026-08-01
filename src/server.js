@@ -109,6 +109,7 @@ function parseTypedTime(text) {
   if (match) return format(match[1], match[2]);
   match = value.match(/(\d{1,2})\s*โมง\s*(\d{1,2})?/);
   if (match) return format(match[1], match[2] ?? '00');
+  if (/วันที่|วันที|วันทึ่/.test(value)) return null;
   match = value.match(/(?:รอบ|เวลา)?\s*(\d{1,2})(?:\s*น\.?)?$/);
   if (match) return format(match[1]);
   return null;
@@ -496,7 +497,11 @@ async function typedScheduleChoice(userId, text) {
   const current = userState(userId);
   if (!current.date || !current.pickupId || !current.dropoffId || current.flowStep !== 'schedule') return null;
   const typedTime = parseTypedTime(text);
-  if (!typedTime) return null;
+  if (!typedTime) {
+    const value = cleanCustomerText(text);
+    if (/รอบ|กี่โมง|มี.*บ้าง|มี.*ไหม|มี.*มั้ย/.test(value)) return scheduleChoices(userId);
+    return null;
+  }
   const routes = await routesForJourney(current.pickupId, current.dropoffId);
   for (const route of routes) {
     const schedules = await schedulesFor(route.id, current.date);
@@ -884,7 +889,7 @@ async function scheduleChoices(userId) {
 รอบที่มีตามเงื่อนไขนี้:
 ${scheduleList}
 
-กรุณากดเลือกรอบรถ หรือพิมพ์เวลาได้เลยค่ะ`, chunk(options));
+กรุณากดเลือกรอบรถด้านล่าง หรือพิมพ์ตามตัวอย่าง เช่น ${choices[0].label} ได้เลยค่ะ`, chunk(options));
 }
 
 async function result(userId, routeId, departureTime) {
