@@ -1038,6 +1038,17 @@ function fallbackMessage() {
   ]);
 }
 
+async function typedBookingModeMessage(userId, text) {
+  const value = cleanCustomerText(text);
+  if (/จอง.*(อัตโนมัติ|ออโต้|auto|bot|บอท)|อัตโนมัติ|ออโต้/.test(value)) {
+    return askBookingDate(userId);
+  }
+  if (/(จอง|คุย|ติดต่อ|คุยกับ).*(แอดมิน|admin)|แอดมิน/.test(value)) {
+    return handoffToAdmin(userId);
+  }
+  return null;
+}
+
 async function handleEvent(event) {
   if (!event.replyToken) return;
   if (!botEnabled()) return;
@@ -1055,7 +1066,9 @@ async function handleEvent(event) {
       state.set(userId, {});
       message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
     } else if (!message) {
-      message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
+      message = sourceIdMessage(event, event.message.text)
+        ?? await typedBookingModeMessage(userId, event.message.text)
+        ?? await dateMessage(userId, event.message.text);
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
     if (userState(userId).handoffToAdmin) return;
