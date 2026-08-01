@@ -27,8 +27,20 @@ function closeBookingAfterHours(userId) {
   setState(userId, { afterHoursNoticeSent: true, handoffToAdmin: false, booking: null });
   return afterHoursBooking();
 }
+function afterHoursTestUserIds() {
+  return String(process.env.LINE_TEST_USER_IDS || process.env.LINE_TEST_USER_ID || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+function canUseAfterHours(userId) {
+  return afterHoursTestUserIds().includes(userId);
+}
+function isBookingOpenFor(userId) {
+  return isBookingOpen() || canUseAfterHours(userId);
+}
 function handoffToAdmin(userId) {
-  if (!isBookingOpen()) return closeBookingAfterHours(userId);
+  if (!isBookingOpenFor(userId)) return closeBookingAfterHours(userId);
   setState(userId, { handoffToAdmin: true, booking: null });
   return adminContact();
 }
@@ -227,7 +239,7 @@ async function selectedTripBooking(userId) {
 }
 
 async function askBookingDate(userId) {
-  if (!isBookingOpen()) {
+  if (!isBookingOpenFor(userId)) {
     return closeBookingAfterHours(userId);
   }
 
@@ -400,7 +412,7 @@ async function handleBookingText(userId, text) {
   const current = userState(userId).booking;
   if (!current?.step) return null;
 
-  if (!isBookingOpen()) {
+  if (!isBookingOpenFor(userId)) {
     return closeBookingAfterHours(userId);
   }
 
@@ -692,7 +704,7 @@ function withPaymentQr(message) {
 }
 
 function bookingContact(userId = null) {
-  if (isBookingOpen()) return withPaymentQr(adminContact());
+  if (isBookingOpenFor(userId)) return withPaymentQr(adminContact());
   return userId ? closeBookingAfterHours(userId) : afterHoursBooking();
 }
 
@@ -777,7 +789,7 @@ async function paidBookingReply(userId, booking, amount, notePrefix = 'ตรว
 
 async function slipMessage(event) {
   const booking = userState(event.source.userId).booking;
-  if (booking?.step === 'awaiting_slip' && !isBookingOpen()) {
+  if (booking?.step === 'awaiting_slip' && !isBookingOpenFor(event.source.userId)) {
     return closeBookingAfterHours(event.source.userId);
   }
   if (processedSlipMessageIds.has(event.message.id)) {
@@ -943,10 +955,10 @@ function fallbackMessage() {
 async function handleEvent(event) {
   if (!event.replyToken) return;
   const userId = event.source.userId;
-  if (userState(userId).afterHoursNoticeSent && !isBookingOpen()) return;
-  if (userState(userId).afterHoursNoticeSent && isBookingOpen()) setState(userId, { afterHoursNoticeSent: false });
+  if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId)) return;
+  if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId)) setState(userId, { afterHoursNoticeSent: false });
   let message;
-  if (!isBookingOpen()) message = closeBookingAfterHours(userId);
+  if (!isBookingOpenFor(userId)) message = closeBookingAfterHours(userId);
   else if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
