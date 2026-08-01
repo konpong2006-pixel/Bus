@@ -23,6 +23,13 @@ const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 function chunk(items, size = 13) { return items.slice(0, size); }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
+function handoffToAdmin(userId) {
+  setState(userId, { handoffToAdmin: true, booking: null });
+  return isBookingOpen() ? adminContact() : afterHoursBooking();
+}
+function shouldResumeFromHandoff(text) {
+  return /เริ่มใหม่|จองตั๋ว|จองตัว|เช็กรอบ|ตรวจรอบ|ดูรอบ|restart/i.test(cleanCustomerText(text));
+}
 function cleanCustomerText(text) {
   return normaliseThaiDigits(String(text ?? '').toLowerCase())
     .replace(/[🙏😊😄😃🙂🥰😍❤️💯✅👌👍✨⭐️]/g, '')
@@ -460,7 +467,7 @@ async function dateMessage(userId, text) {
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
   if (/จอง|ซื้อตั๋ว/.test(text)) return askBookingDate(userId);
-  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return bookingContact();
+  if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId);
   const date = parseTypedDate(text);
   if (!date) return unclearDateMessage();
   if (await hasSchedulesOnDate(date) || (!backendSheetConfigured() && isInBookingWindow(date))) {
@@ -943,15 +950,18 @@ async function handleEvent(event) {
   let message;
   if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
+    if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
+    if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) state.set(userId, {});
     message = sourceIdMessage(event, event.message.text) ?? await dateMessage(userId, event.message.text);
   } else if (event.type === 'message' && event.message.type === 'image') {
+    if (userState(userId).handoffToAdmin) return;
     message = await slipMessage(event);
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'restart') message = await start(userId);
     if (action === 'start_booking') message = await askBookingDate(userId);
-    if (action === 'advance_booking' || action === 'contact_admin') message = bookingContact();
+    if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId);
     if (action === 'date') {
       const current = userState(userId);
       if (current.pendingPickupId) {
