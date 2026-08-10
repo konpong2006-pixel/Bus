@@ -465,7 +465,7 @@
         </div>
         <div class="field">
           <label for="phone">📞 เบอร์โทร</label>
-          <input id="phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 094-172-4569" required>
+          <input id="phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 094-172-4569" minlength="9" maxlength="15" required>
           <p class="hint">ตัวอย่าง: 094-172-4569</p>
         </div>
         <div class="field">
@@ -570,6 +570,22 @@
       return Number.isFinite(value) && value > 0 ? value : 1;
     }
 
+    function phoneDigits() {
+      return String(els.phone.value || '').replace(/\D/g, '');
+    }
+
+    function isValidPhone() {
+      const digits = phoneDigits();
+      return digits.length >= 9 && digits.length <= 10;
+    }
+
+    function contactError() {
+      if (!els.customerName.value.trim()) return 'กรุณาใส่ชื่อผู้จองก่อนค่ะ';
+      if (!els.phone.value.trim()) return 'กรุณาใส่เบอร์โทรก่อนค่ะ';
+      if (!isValidPhone()) return 'กรุณาใส่เบอร์โทรให้ถูกต้อง เช่น 094-172-4569 ค่ะ';
+      return '';
+    }
+
     function totalPrice() {
       return state.schedule?.fare ? Number(state.schedule.fare) * seats() : 0;
     }
@@ -671,7 +687,7 @@
       if (target <= 3) return true;
       if (!state.schedule) return false;
       if (target <= 4) return true;
-      return Boolean(els.customerName.value.trim() && els.phone.value.trim());
+      return !contactError();
     }
 
     function showStep(index) {
@@ -757,6 +773,8 @@
       els.next.disabled = true;
       els.next.textContent = 'กำลังส่งข้อมูล...';
       try {
+        const error = contactError();
+        if (error) throw new Error(error);
         if (!canGoStep(5)) throw new Error('กรุณากรอกข้อมูลให้ครบก่อนยืนยันค่ะ');
         const payload = {
           date: state.date.value,
@@ -767,7 +785,7 @@
           seats: seats(),
           pickupSpecial: els.pickupSpecial.value,
           customerName: els.customerName.value,
-          phone: els.phone.value
+          phone: phoneDigits()
         };
         const data = await api('/api/liff/bookings', {
           method: 'POST',
@@ -799,7 +817,7 @@
     els.next.addEventListener('click', () => {
       if (state.step === 5) return submitBooking();
       if (!canGoStep(state.step + 1)) {
-        setStatus('กรุณาเลือกข้อมูลในขั้นตอนนี้ก่อนค่ะ');
+        setStatus(state.step === 4 ? contactError() : 'กรุณาเลือกข้อมูลในขั้นตอนนี้ก่อนค่ะ');
         return;
       }
       setStatus('');
