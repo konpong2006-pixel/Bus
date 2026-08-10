@@ -25,6 +25,8 @@ src/time.js            เวลาไทย / วันไทย
 apps-script/Code.gs    โค้ด Apps Script สำหรับอ่าน/เขียน Google Sheet และเก็บสลิปลง Drive
 public/payment-qr.png  รูป QR โอนเงินที่บอทส่งให้ลูกค้า
 public/liff/index.html หน้าเว็บ LIFF สำหรับจองตั๋วแบบฟอร์ม
+public/rich-menu/booking.png รูป Rich Menu สำหรับปุ่มจองตั๋ว
+scripts/setup-rich-menu.js สคริปต์สร้าง Rich Menu ผ่าน LINE API
 data/*.json            ข้อมูล fallback/local สำหรับเทสต์
 test/bot.test.js       test หลัก
 .env.example           ตัวอย่าง Environment Variables
@@ -128,6 +130,36 @@ LIFF_ID=ใส่ LIFF ID ที่ได้
 
 9. กด `Save, rebuild, and deploy`
 10. เอาลิงก์ LIFF ไปใส่ Rich Menu ปุ่ม `จองตั๋ว`
+
+### สร้าง Rich Menu ด้วย API
+
+สคริปต์นี้จะสร้างเมนูด้านล่าง 1 ปุ่มเต็มแถบ กดแล้วเปิดหน้า LIFF:
+
+```bash
+npm run setup:rich-menu
+```
+
+ค่าที่ต้องมีใน `.env` ก่อนรัน:
+
+```text
+LINE_CHANNEL_ACCESS_TOKEN=token ของ LINE OA ที่ต้องการตั้งเมนู
+RICH_MENU_LINK_URL=https://bus-wbhr.onrender.com/liff
+RICH_MENU_NAME=Bus booking rich menu
+RICH_MENU_CHAT_BAR_TEXT=เมนูจองตั๋ว
+RICH_MENU_DELETE_EXISTING=true
+```
+
+ถ้าทำตัวทดสอบ ให้เปลี่ยน `LINE_CHANNEL_ACCESS_TOKEN` เป็น token ของ OA ทดสอบ และใช้:
+
+```text
+RICH_MENU_LINK_URL=https://bus-test-wsena.onrender.com/liff
+```
+
+หมายเหตุ:
+
+- สคริปต์จะตั้ง Rich Menu เป็น default ให้ผู้ใช้ทุกคนใน OA นั้น
+- ถ้า `RICH_MENU_DELETE_EXISTING=true` จะลบ Rich Menu ชื่อเดียวกันก่อนสร้างใหม่
+- รูปเมนูอยู่ที่ `public/rich-menu/booking.png`
 
 ### Google Sheet / Apps Script
 
