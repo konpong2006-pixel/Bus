@@ -8,351 +8,310 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f3faf7;
-      --bg-2: #e8f4ff;
-      --ink: #142820;
+      --bg: #f3faf6;
+      --panel: #ffffff;
+      --ink: #15291f;
       --muted: #63756d;
-      --soft: #f8fffb;
-      --panel: rgba(255, 255, 255, 0.92);
-      --line: #d8e8df;
+      --line: #d9e8df;
       --green: #08784f;
       --green-2: #0f986b;
-      --green-soft: #dcf5e9;
-      --blue: #2d73c8;
-      --blue-soft: #e4f0ff;
-      --orange: #ec8020;
+      --green-soft: #def4e9;
+      --blue: #246fc7;
+      --blue-soft: #e8f1ff;
+      --orange: #e87916;
       --orange-soft: #fff1df;
       --red: #b42318;
-      --shadow: 0 14px 34px rgba(24, 54, 42, 0.12);
-      --radius: 18px;
+      --shadow: 0 14px 34px rgba(18, 52, 36, 0.12);
+      --radius: 20px;
     }
 
     * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(184, 234, 203, 0.75), transparent 36rem),
-        radial-gradient(circle at top right, rgba(197, 225, 255, 0.9), transparent 34rem),
-        linear-gradient(180deg, var(--bg), #ffffff 58%, #f7faf8);
+        radial-gradient(circle at top left, rgba(155, 224, 182, 0.8), transparent 30rem),
+        radial-gradient(circle at top right, rgba(194, 224, 255, 0.9), transparent 30rem),
+        linear-gradient(180deg, var(--bg), #fff 64%);
       color: var(--ink);
-      line-height: 1.5;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background-image:
-        linear-gradient(120deg, rgba(8, 120, 79, 0.06) 0 1px, transparent 1px),
-        linear-gradient(20deg, rgba(45, 115, 200, 0.05) 0 1px, transparent 1px);
-      background-size: 42px 42px, 58px 58px;
-      mask-image: linear-gradient(180deg, #000, transparent 70%);
+      line-height: 1.55;
     }
 
     main {
-      width: min(860px, 100%);
+      width: min(760px, 100%);
       margin: 0 auto;
-      padding: 14px 14px 120px;
+      padding: 12px 12px 120px;
     }
 
     .hero {
       position: relative;
       overflow: hidden;
-      min-height: 178px;
-      border-radius: 0 0 28px 28px;
-      padding: 22px 18px 20px;
+      min-height: 150px;
+      margin: 0 -12px 12px;
+      padding: 20px 16px 22px;
+      border-radius: 0 0 26px 26px;
       color: #fff;
       background:
-        linear-gradient(135deg, rgba(6, 104, 69, 0.94), rgba(20, 152, 105, 0.9)),
+        linear-gradient(135deg, rgba(5, 105, 67, 0.95), rgba(20, 150, 104, 0.9)),
         url("/rich-menu/booking.jpg") center / cover;
       box-shadow: var(--shadow);
-    }
-
-    .hero::after {
-      content: "";
-      position: absolute;
-      right: -74px;
-      bottom: -66px;
-      width: 220px;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.18);
     }
 
     .brand {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      min-height: 32px;
-      padding: 6px 10px;
+      min-height: 34px;
+      padding: 6px 11px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.17);
-      font-size: 14px;
-      font-weight: 700;
-      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 15px;
+      font-weight: 900;
     }
 
     h1 {
-      position: relative;
-      margin: 18px 0 8px;
-      max-width: 580px;
-      font-size: clamp(28px, 7vw, 42px);
-      line-height: 1.1;
+      margin: 16px 0 6px;
+      font-size: 32px;
+      line-height: 1.12;
       letter-spacing: 0;
     }
 
     .hero p {
-      position: relative;
       margin: 0;
-      max-width: 600px;
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 16px;
+      max-width: 560px;
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 18px;
+      font-weight: 650;
     }
 
     .notice {
       display: grid;
       gap: 9px;
-      margin: 14px 0;
+      margin: 12px 0;
       padding: 14px;
-      border: 1px solid #ffcf95;
+      border: 1px solid #ffd099;
       border-radius: var(--radius);
       background: #fff8ee;
       color: #633800;
-      font-size: 14px;
-      box-shadow: 0 8px 22px rgba(150, 88, 12, 0.08);
+      font-size: 17px;
+      font-weight: 760;
     }
 
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 14px 0;
-    }
-
-    .step-pill {
-      min-height: 52px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.78);
-      color: var(--muted);
-      text-align: center;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .step-pill.done {
-      border-color: #9ed8be;
-      background: var(--green-soft);
-      color: var(--green);
-    }
-
-    form {
-      display: grid;
-      gap: 12px;
-    }
-
-    .card, .result {
+    .progress-card {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: 12px 0;
+      padding: 12px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: var(--panel);
-      box-shadow: 0 10px 28px rgba(29, 55, 43, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 10px 24px rgba(15, 63, 43, 0.09);
+      backdrop-filter: blur(12px);
     }
 
-    .card {
-      padding: 14px;
-    }
-
-    .card-head {
+    .progress-head {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 12px;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: var(--green);
+      font-size: 17px;
+      font-weight: 950;
     }
 
-    .badge {
+    .progress-bar {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e6f0eb;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 16.66%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--green-2));
+      transition: width 0.18s ease;
+    }
+
+    .step-dots {
       display: grid;
-      flex: 0 0 auto;
-      place-items: center;
-      width: 38px;
-      height: 38px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .dot {
+      min-height: 38px;
+      border: 1px solid var(--line);
       border-radius: 12px;
+      background: #f8fffb;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .dot.active {
+      border-color: var(--green);
       background: var(--green-soft);
       color: var(--green);
-      font-weight: 900;
     }
 
-    .card-title {
-      margin: 0;
-      font-size: 18px;
-      line-height: 1.25;
+    .dot.done {
+      border-color: #a6dcbc;
+      background: #effaf4;
+      color: #176b4c;
     }
 
-    .card-sub {
-      margin: 3px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .field { min-width: 0; }
-
-    label {
-      display: block;
-      margin-bottom: 7px;
-      color: #21382f;
-      font-weight: 850;
-      font-size: 14px;
-    }
-
-    select, input {
-      width: 100%;
-      min-height: 52px;
-      border: 1px solid #b9cec3;
-      border-radius: 14px;
-      padding: 11px 13px;
-      background: #fff;
-      color: var(--ink);
-      font: inherit;
-      font-size: 16px;
-      outline: none;
-      transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
-    }
-
-    select:focus, input:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 4px rgba(8, 120, 79, 0.12);
-    }
-
-    select:disabled, input:disabled {
-      background: #eef4f1;
-      color: #7c8a84;
-    }
-
-    .hint {
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .helper {
-      margin: 8px 0 0;
-      padding: 10px;
-      border-radius: 13px;
-      background: #f2fbf6;
-      color: #395548;
-      font-size: 13px;
-    }
-
-    .schedule-preview {
+    .step-panel {
       display: none;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .schedule-preview.show {
-      display: grid;
-    }
-
-    .schedule-chip {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      border: 1px solid #c7e0d4;
-      border-radius: 13px;
-      background: #fbfffd;
-      color: #244238;
-      font-weight: 750;
-      font-size: 14px;
-    }
-
-    .mini-note {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 13px;
-      background: var(--blue-soft);
-      color: #23466e;
-      font-size: 13px;
-    }
-
-    .sticky-summary {
-      margin-top: 2px;
-      border: 1px solid #b8dec9;
-      border-radius: 20px;
-      background: rgba(248, 255, 251, 0.95);
+      min-height: 460px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
       box-shadow: var(--shadow);
-      overflow: hidden;
     }
 
-    .summary-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 14px 10px;
-    }
+    .step-panel.active { display: block; }
 
-    .summary-title {
-      margin: 0;
-      font-weight: 900;
-    }
-
-    .summary-price {
+    .step-kicker {
+      margin: 0 0 6px;
       color: var(--green);
+      font-size: 18px;
       font-weight: 950;
-      white-space: nowrap;
     }
 
-    .summary-lines {
-      display: grid;
-      gap: 3px;
-      padding: 0 14px 12px;
+    .step-title {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .step-help {
+      margin: 0 0 16px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 18px;
+      font-weight: 680;
     }
 
-    .actions {
+    .choice-grid {
       display: grid;
-      grid-template-columns: 1fr auto;
       gap: 10px;
-      padding: 12px;
-      border-top: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.72);
     }
 
-    button {
-      min-height: 52px;
-      border: 0;
-      border-radius: 15px;
-      padding: 10px 16px;
+    .choice {
+      width: 100%;
+      min-height: 66px;
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: #fbfffd;
+      color: var(--ink);
+      text-align: left;
       font: inherit;
+      font-size: 20px;
       font-weight: 900;
       cursor: pointer;
     }
 
-    .primary {
-      background: linear-gradient(135deg, var(--green), var(--green-2));
-      color: #fff;
-      box-shadow: 0 10px 20px rgba(8, 120, 79, 0.22);
+    .choice small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 760;
     }
 
-    .primary:disabled {
-      background: #a6b9b0;
-      box-shadow: none;
-      cursor: not-allowed;
+    .choice.selected {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+      box-shadow: 0 8px 18px rgba(8, 120, 79, 0.12);
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      font-size: 19px;
+      font-weight: 950;
+    }
+
+    input {
+      width: 100%;
+      min-height: 62px;
+      border: 2px solid #bdd2c8;
+      border-radius: 18px;
+      padding: 12px 14px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 20px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(8, 120, 79, 0.13);
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 680;
+    }
+
+    .summary-box {
+      display: grid;
+      gap: 8px;
+      white-space: pre-wrap;
+      margin: 14px 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #f8fffb;
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .price {
+      color: var(--green);
+      font-size: 24px;
+      font-weight: 1000;
+    }
+
+    .nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 10px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 -12px 26px rgba(24, 54, 42, 0.12);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav button, .result-actions button {
+      min-height: 58px;
+      border: 0;
+      border-radius: 17px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 19px;
+      font-weight: 950;
+      cursor: pointer;
     }
 
     .secondary {
@@ -360,47 +319,55 @@
       color: var(--green);
     }
 
+    .primary {
+      background: linear-gradient(135deg, var(--green), var(--green-2));
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(8, 120, 79, 0.24);
+    }
+
+    .primary:disabled, .secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
     .status {
-      min-height: 22px;
-      margin: 8px 4px 0;
+      min-height: 28px;
+      margin: 12px 4px;
       color: var(--red);
-      font-weight: 750;
-      font-size: 14px;
+      font-size: 17px;
+      font-weight: 850;
     }
 
     .result {
       display: none;
       margin-top: 14px;
-      padding: 15px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
     }
 
     .result.show { display: block; }
 
     .result h2 {
-      margin: 0 0 6px;
-      font-size: 21px;
+      margin: 0 0 8px;
+      font-size: 27px;
+      line-height: 1.2;
     }
 
     .result p {
       margin: 8px 0;
       color: var(--muted);
-    }
-
-    .summary-box {
-      white-space: pre-wrap;
-      margin: 12px 0;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 15px;
-      background: #f8fffb;
-      color: #223a31;
-      font-weight: 650;
+      font-size: 18px;
+      font-weight: 700;
     }
 
     .qr {
       display: none;
-      width: min(280px, 100%);
-      margin: 12px auto 4px;
+      width: min(300px, 100%);
+      margin: 14px auto;
       border: 1px solid var(--line);
       border-radius: 18px;
       background: #fff;
@@ -409,26 +376,19 @@
 
     .qr.show { display: block; }
 
-    .line-note {
-      padding: 10px 12px;
-      border-radius: 13px;
-      background: var(--orange-soft);
-      color: #7b4309;
-      font-weight: 800;
+    .result-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    @media (max-width: 640px) {
-      main { padding: 0 10px 118px; }
-      .hero {
-        margin: 0 -10px;
-        border-radius: 0 0 24px 24px;
-      }
-      .steps { grid-template-columns: repeat(2, 1fr); }
-      .grid { grid-template-columns: 1fr; }
-      .actions { grid-template-columns: 1fr; }
-      .secondary { order: 2; }
-      .summary-top { align-items: flex-start; }
-      .hero p { font-size: 15px; }
+    @media (max-width: 480px) {
+      main { padding-inline: 10px; }
+      h1 { font-size: 30px; }
+      .step-panel { min-height: 450px; padding: 14px; }
+      .step-title { font-size: 26px; }
+      .choice { font-size: 19px; }
+      .dot { font-size: 12px; min-height: 34px; }
     }
   </style>
 </head>
@@ -436,133 +396,92 @@
   <main>
     <section class="hero">
       <div class="brand">🚌 รถร่วมวิศวกรเสนา</div>
-      <h1>จองตั๋วง่ายใน LINE</h1>
-      <p>เลือกข้อมูลจากช่อง ไม่ต้องพิมพ์ยาว ลดการกรอกผิด และส่งรายการให้แอดมินตรวจต่อได้ทันที</p>
+      <h1>จองตั๋วทีละขั้น</h1>
+      <p>กดเลือกไปทีละหน้า ตัวอักษรใหญ่ ใช้งานง่าย และย้อนกลับไปแก้ไขได้ค่ะ</p>
     </section>
 
-    <div class="notice">
+    <section class="notice">
       <div>ℹ️ ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ</div>
       <div>⚠️ ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง</div>
       <div>⏰ รับจองอัตโนมัติ 07.00-22.00 น.</div>
-    </div>
+    </section>
 
-    <div class="steps" aria-label="ขั้นตอนการจอง">
-      <div class="step-pill" data-step="date">1. วันที่</div>
-      <div class="step-pill" data-step="route">2. จุดขึ้นลง</div>
-      <div class="step-pill" data-step="time">3. รอบรถ</div>
-      <div class="step-pill" data-step="info">4. ข้อมูลผู้จอง</div>
-    </div>
+    <section class="progress-card" aria-label="สถานะการจอง">
+      <div class="progress-head">
+        <span id="stepText">ขั้นที่ 1 จาก 6</span>
+        <span id="stepName">เลือกวันที่</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="step-dots">
+        <button class="dot active" type="button" data-go="0">วันที่</button>
+        <button class="dot" type="button" data-go="1">ขึ้น</button>
+        <button class="dot" type="button" data-go="2">ลง</button>
+        <button class="dot" type="button" data-go="3">รอบ</button>
+        <button class="dot" type="button" data-go="4">ข้อมูล</button>
+        <button class="dot" type="button" data-go="5">ยืนยัน</button>
+      </div>
+    </section>
 
     <form id="bookingForm">
-      <section class="card">
-        <div class="card-head">
-          <div class="badge">1</div>
-          <div>
-            <h2 class="card-title">เลือกวันที่เดินทาง</h2>
-            <p class="card-sub">ระบบจะแสดงเฉพาะวันที่มีรอบรถในชีทเท่านั้น</p>
-          </div>
+      <section class="step-panel active" data-step="0">
+        <p class="step-kicker">📅 ขั้นที่ 1</p>
+        <h2 class="step-title">เลือกวันที่เดินทาง</h2>
+        <p class="step-help">ระบบจะแสดงเฉพาะวันที่มีข้อมูลรอบรถในระบบเท่านั้นค่ะ</p>
+        <div class="choice-grid" id="dateChoices"></div>
+      </section>
+
+      <section class="step-panel" data-step="1">
+        <p class="step-kicker">📍 ขั้นที่ 2</p>
+        <h2 class="step-title">เลือกจุดขึ้นหลัก</h2>
+        <p class="step-help">ถ้าขึ้นกลางทาง ให้เลือกจุดหลักที่ตรงกับระบบก่อน แล้วค่อยกรอกจุดขึ้นพิเศษภายหลังค่ะ</p>
+        <div class="choice-grid" id="pickupChoices"></div>
+      </section>
+
+      <section class="step-panel" data-step="2">
+        <p class="step-kicker">🏁 ขั้นที่ 3</p>
+        <h2 class="step-title">เลือกจุดลง</h2>
+        <p class="step-help">รายการจุดลงจะเปลี่ยนตามจุดขึ้นที่เลือกไว้ค่ะ</p>
+        <div class="choice-grid" id="dropoffChoices"></div>
+      </section>
+
+      <section class="step-panel" data-step="3">
+        <p class="step-kicker">⏰ ขั้นที่ 4</p>
+        <h2 class="step-title">เลือกรอบรถ</h2>
+        <p class="step-help">แสดงเฉพาะรอบที่ออกแน่นอนตามข้อมูลในระบบค่ะ</p>
+        <div class="choice-grid" id="scheduleChoices"></div>
+      </section>
+
+      <section class="step-panel" data-step="4">
+        <p class="step-kicker">👤 ขั้นที่ 5</p>
+        <h2 class="step-title">กรอกข้อมูลผู้จอง</h2>
+        <p class="step-help">กรอกชื่อ เบอร์โทร จำนวนที่นั่ง และจุดขึ้นพิเศษ ถ้าขึ้นที่ บขส ให้พิมพ์ “บขส” หรือ “-” ค่ะ</p>
+        <div class="field">
+          <label for="customerName">👤 ชื่อผู้จอง</label>
+          <input id="customerName" autocomplete="name" placeholder="เช่น คุณกมลพร" required>
+          <p class="hint">ตัวอย่าง: คุณกมลพร</p>
         </div>
         <div class="field">
-          <label for="date">📅 วันที่เดินทาง</label>
-          <select id="date" required>
-            <option value="">กำลังโหลดวันที่...</option>
-          </select>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-head">
-          <div class="badge">2</div>
-          <div>
-            <h2 class="card-title">เลือกจุดขึ้นและจุดลง</h2>
-            <p class="card-sub">เลือกจากรายการ เพื่อให้ระบบคิดราคาได้ถูกต้อง</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="field">
-            <label for="pickup">📍 จุดขึ้นหลัก</label>
-            <select id="pickup" required disabled>
-              <option value="">เลือกวันที่ก่อน</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="dropoff">🏁 จุดลง</label>
-            <select id="dropoff" required disabled>
-              <option value="">เลือกจุดขึ้นก่อน</option>
-            </select>
-          </div>
-        </div>
-        <div class="mini-note">
-          <span>💡</span>
-          <span>ถ้าขึ้นกลางทาง ให้เลือกจุดขึ้นหลักที่ใกล้ที่สุด แล้วไปกรอกจุดขึ้นพิเศษด้านล่างค่ะ</span>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-head">
-          <div class="badge">3</div>
-          <div>
-            <h2 class="card-title">เลือกรอบรถ</h2>
-            <p class="card-sub">แสดงเฉพาะรอบที่สถานะเป็น “ออกแน่นอน”</p>
-          </div>
+          <label for="phone">📞 เบอร์โทร</label>
+          <input id="phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 094-172-4569" required>
+          <p class="hint">ตัวอย่าง: 094-172-4569</p>
         </div>
         <div class="field">
-          <label for="schedule">⏰ รอบที่ต้องการ</label>
-          <select id="schedule" required disabled>
-            <option value="">เลือกจุดขึ้นและจุดลงก่อน</option>
-          </select>
-          <p class="hint">ตัวอย่างรอบ: ระยอง 06:00 หรือ โคราช 09:20</p>
+          <label for="seats">🎟️ จำนวนที่นั่ง</label>
+          <input id="seats" inputmode="numeric" autocomplete="off" value="1" required>
         </div>
-        <div class="schedule-preview" id="schedulePreview"></div>
-      </section>
-
-      <section class="card">
-        <div class="card-head">
-          <div class="badge">4</div>
-          <div>
-            <h2 class="card-title">กรอกข้อมูลผู้จอง</h2>
-            <p class="card-sub">กรอกสั้น ๆ ให้แอดมินติดต่อกลับได้</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="field">
-            <label for="seats">🎟️ จำนวนที่นั่ง</label>
-            <input id="seats" inputmode="numeric" autocomplete="off" value="1" required>
-          </div>
-          <div class="field">
-            <label for="pickupSpecial">📌 จุดขึ้นพิเศษ</label>
-            <input id="pickupSpecial" autocomplete="off" placeholder="หน้าบิ๊กซี / สะพานลอย / -">
-            <p class="hint">ถ้าขึ้นที่ บขส ให้พิมพ์ “บขส” หรือ “-”</p>
-          </div>
-        </div>
-        <div class="grid">
-          <div class="field">
-            <label for="customerName">👤 ชื่อผู้จอง</label>
-            <input id="customerName" autocomplete="name" placeholder="เช่น คุณกมลพร" required>
-          </div>
-          <div class="field">
-            <label for="phone">📞 เบอร์โทร</label>
-            <input id="phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 094-172-4569" required>
-          </div>
-        </div>
-        <div class="helper">
-          🔴 ตัวอย่างการกรอก: คุณกมลพร 094-172-4569
+        <div class="field">
+          <label for="pickupSpecial">📌 จุดขึ้นพิเศษ</label>
+          <input id="pickupSpecial" autocomplete="off" placeholder="หน้าบิ๊กซี / สะพานลอย / บขส / -">
         </div>
       </section>
 
-      <div class="sticky-summary">
-        <div class="summary-top">
-          <p class="summary-title">สรุปรายการก่อนจอง</p>
-          <div class="summary-price" id="priceText">รอคำนวณราคา</div>
-        </div>
-        <div class="summary-lines" id="liveSummary">
-          <span>เลือกข้อมูลด้านบนให้ครบ แล้วกดยืนยันรายการจองค่ะ</span>
-        </div>
-        <div class="actions">
-          <button class="primary" id="submitBtn" type="submit">✅ ยืนยันรายการจอง</button>
-          <button class="secondary" id="resetBtn" type="button">ล้างข้อมูล</button>
-        </div>
-      </div>
+      <section class="step-panel" data-step="5">
+        <p class="step-kicker">✅ ขั้นที่ 6</p>
+        <h2 class="step-title">ตรวจสอบก่อนยืนยัน</h2>
+        <p class="step-help">ตรวจข้อมูลให้ถูกต้องก่อนกดยืนยันรายการจองค่ะ</p>
+        <div class="summary-box" id="reviewBox"></div>
+        <div class="price" id="priceText">รอคำนวณราคา</div>
+      </section>
 
       <div class="status" id="status" role="status"></div>
     </form>
@@ -572,106 +491,64 @@
       <p>กรุณาตรวจสอบยอด แล้วโอนเงินตาม QR ด้านล่าง จากนั้นส่งสลิปในแชท LINE เดิมค่ะ</p>
       <div class="summary-box" id="summary"></div>
       <img class="qr" id="qr" alt="QR สำหรับโอนเงิน">
-      <p class="line-note">📎 หลังโอนเสร็จ ให้กลับไปส่งรูปสลิปในแชท LINE นะคะ</p>
+      <p>📎 หลังโอนเสร็จ ให้กลับไปส่งรูปสลิปในแชท LINE นะคะ</p>
+      <div class="result-actions">
+        <button class="primary" type="button" id="closeBtn">กลับไปที่ LINE</button>
+      </div>
     </section>
   </main>
+
+  <nav class="nav" aria-label="ปุ่มนำทาง">
+    <button class="secondary" id="backBtn" type="button">ย้อนกลับ</button>
+    <button class="primary" id="nextBtn" type="button">ถัดไป</button>
+  </nav>
 
   <script>
     const els = {
       form: document.querySelector('#bookingForm'),
-      date: document.querySelector('#date'),
-      pickup: document.querySelector('#pickup'),
-      dropoff: document.querySelector('#dropoff'),
-      schedule: document.querySelector('#schedule'),
-      seats: document.querySelector('#seats'),
-      pickupSpecial: document.querySelector('#pickupSpecial'),
+      panels: [...document.querySelectorAll('.step-panel')],
+      dots: [...document.querySelectorAll('.dot')],
+      stepText: document.querySelector('#stepText'),
+      stepName: document.querySelector('#stepName'),
+      progressFill: document.querySelector('#progressFill'),
+      dateChoices: document.querySelector('#dateChoices'),
+      pickupChoices: document.querySelector('#pickupChoices'),
+      dropoffChoices: document.querySelector('#dropoffChoices'),
+      scheduleChoices: document.querySelector('#scheduleChoices'),
       customerName: document.querySelector('#customerName'),
       phone: document.querySelector('#phone'),
-      submit: document.querySelector('#submitBtn'),
-      reset: document.querySelector('#resetBtn'),
+      seats: document.querySelector('#seats'),
+      pickupSpecial: document.querySelector('#pickupSpecial'),
+      reviewBox: document.querySelector('#reviewBox'),
+      priceText: document.querySelector('#priceText'),
       status: document.querySelector('#status'),
       result: document.querySelector('#result'),
       summary: document.querySelector('#summary'),
       qr: document.querySelector('#qr'),
-      priceText: document.querySelector('#priceText'),
-      liveSummary: document.querySelector('#liveSummary'),
-      schedulePreview: document.querySelector('#schedulePreview'),
-      steps: [...document.querySelectorAll('.step-pill')]
+      nav: document.querySelector('.nav'),
+      back: document.querySelector('#backBtn'),
+      next: document.querySelector('#nextBtn'),
+      close: document.querySelector('#closeBtn')
     };
 
-    let liffReady = false;
-    const optionData = {
+    const steps = ['เลือกวันที่', 'เลือกจุดขึ้น', 'เลือกจุดลง', 'เลือกรอบรถ', 'กรอกข้อมูล', 'ตรวจสอบ'];
+    const state = {
+      step: 0,
+      liffReady: false,
+      paymentQrUrl: '',
       dates: [],
       pickups: [],
       dropoffs: [],
-      schedules: []
+      schedules: [],
+      date: null,
+      pickup: null,
+      dropoff: null,
+      schedule: null
     };
 
     function setStatus(text, isError = true) {
       els.status.textContent = text || '';
       els.status.style.color = isError ? '#b42318' : '#08784f';
-    }
-
-    function option(value, label) {
-      const item = document.createElement('option');
-      item.value = value;
-      item.textContent = label;
-      return item;
-    }
-
-    function setOptions(select, items, placeholder) {
-      select.innerHTML = '';
-      select.append(option('', placeholder));
-      for (const item of items) select.append(option(item.value ?? item.id, item.label ?? item.name));
-      select.disabled = false;
-    }
-
-    function selectedLabel(select) {
-      return select.selectedOptions[0]?.textContent || '';
-    }
-
-    function selectedSchedule() {
-      try {
-        const value = JSON.parse(els.schedule.value || '{}');
-        return optionData.schedules.find((item) => item.routeId === value.routeId && item.departureTime === value.departureTime);
-      } catch {
-        return null;
-      }
-    }
-
-    function updateSteps() {
-      const done = {
-        date: Boolean(els.date.value),
-        route: Boolean(els.pickup.value && els.dropoff.value),
-        time: Boolean(els.schedule.value),
-        info: Boolean(els.customerName.value.trim() && els.phone.value.trim())
-      };
-      for (const step of els.steps) step.classList.toggle('done', Boolean(done[step.dataset.step]));
-    }
-
-    function updateSummary() {
-      const date = selectedLabel(els.date);
-      const pickup = selectedLabel(els.pickup);
-      const dropoff = selectedLabel(els.dropoff);
-      const schedule = selectedSchedule();
-      const seats = Number(els.seats.value || 1);
-      const price = schedule?.fare ? Number(schedule.fare) * (Number.isFinite(seats) ? seats : 1) : null;
-
-      els.priceText.textContent = price ? `ยอดรวม ${price.toLocaleString('th-TH')} บาท` : 'รอคำนวณราคา';
-      els.liveSummary.innerHTML = '';
-      const lines = [
-        date && `📅 ${date}`,
-        pickup && dropoff && `🚍 ${pickup} ไป ${dropoff}`,
-        schedule && `⏰ รอบ ${schedule.origin} ${schedule.departureTime}`,
-        els.seats.value && `🎟️ ${els.seats.value} ที่นั่ง`
-      ].filter(Boolean);
-      if (!lines.length) lines.push('เลือกข้อมูลด้านบนให้ครบ แล้วกดยืนยันรายการจองค่ะ');
-      for (const line of lines) {
-        const item = document.createElement('span');
-        item.textContent = line;
-        els.liveSummary.append(item);
-      }
-      updateSteps();
     }
 
     async function api(path, init) {
@@ -681,11 +558,144 @@
       return data;
     }
 
+    function money(value) {
+      return Number(value || 0).toLocaleString('th-TH');
+    }
+
+    function seats() {
+      const value = Number(els.seats.value || 1);
+      return Number.isFinite(value) && value > 0 ? value : 1;
+    }
+
+    function totalPrice() {
+      return state.schedule?.fare ? Number(state.schedule.fare) * seats() : 0;
+    }
+
+    function choiceButton(item, group, selectedValue, onClick, subText = '') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice';
+      btn.dataset.value = item.value ?? item.id;
+      btn.innerHTML = `${item.label ?? item.name}${subText ? `<small>${subText}</small>` : ''}`;
+      if (String(selectedValue || '') === String(btn.dataset.value)) btn.classList.add('selected');
+      btn.addEventListener('click', () => {
+        [...group.children].forEach((child) => child.classList.remove('selected'));
+        btn.classList.add('selected');
+        onClick(item);
+      });
+      group.append(btn);
+    }
+
+    function renderChoices() {
+      els.dateChoices.innerHTML = '';
+      for (const date of state.dates) {
+        choiceButton(date, els.dateChoices, state.date?.value, async (item) => {
+          state.date = item;
+          state.schedule = null;
+          setStatus('');
+          await loadSchedules();
+          goNext();
+        }, 'กดเลือกวันนี้');
+      }
+      if (!state.dates.length) {
+        els.dateChoices.innerHTML = '<div class="summary-box">ยังไม่มีวันที่เปิดให้จองในระบบ กรุณาติดต่อแอดมินค่ะ</div>';
+      }
+
+      els.pickupChoices.innerHTML = '';
+      for (const pickup of state.pickups) {
+        choiceButton(pickup, els.pickupChoices, state.pickup?.id, async (item) => {
+          state.pickup = item;
+          state.dropoff = null;
+          state.schedule = null;
+          state.schedules = [];
+          await loadDropoffs();
+          goNext();
+        }, 'จุดขึ้นหลัก');
+      }
+
+      els.dropoffChoices.innerHTML = '';
+      for (const dropoff of state.dropoffs) {
+        choiceButton(dropoff, els.dropoffChoices, state.dropoff?.id, async (item) => {
+          state.dropoff = item;
+          state.schedule = null;
+          await loadSchedules();
+          goNext();
+        }, 'ปลายทาง');
+      }
+      if (state.pickup && !state.dropoffs.length) {
+        els.dropoffChoices.innerHTML = '<div class="summary-box">ยังไม่มีจุดลงสำหรับจุดขึ้นนี้ค่ะ</div>';
+      }
+
+      els.scheduleChoices.innerHTML = '';
+      for (const schedule of state.schedules) {
+        choiceButton({
+          value: `${schedule.routeId}|${schedule.departureTime}`,
+          label: `${schedule.origin} ${schedule.departureTime} น.`
+        }, els.scheduleChoices, state.schedule ? `${state.schedule.routeId}|${state.schedule.departureTime}` : '', () => {
+          state.schedule = schedule;
+          setStatus('');
+          updateReview();
+          goNext();
+        }, schedule.busNumber ? `รถ ${schedule.busNumber}` : 'รอบรถ');
+      }
+      if (state.date && state.pickup && state.dropoff && !state.schedules.length) {
+        els.scheduleChoices.innerHTML = '<div class="summary-box">ไม่พบรอบรถสำหรับเส้นทางนี้ กรุณาย้อนกลับไปเปลี่ยนจุดขึ้น/จุดลง หรือติดต่อแอดมินค่ะ</div>';
+      }
+    }
+
+    function updateReview() {
+      const lines = [
+        `📅 วันที่: ${state.date?.label || '-'}`,
+        `🚍 เส้นทาง: ${state.pickup?.name || '-'} ไป ${state.dropoff?.name || '-'}`,
+        `⏰ รอบ: ${state.schedule ? `${state.schedule.origin} ${state.schedule.departureTime} น.` : '-'}`,
+        `🎟️ จำนวนที่นั่ง: ${seats()} ที่นั่ง`,
+        `👤 ชื่อผู้จอง: ${els.customerName.value.trim() || '-'}`,
+        `📞 เบอร์โทร: ${els.phone.value.trim() || '-'}`,
+        `📌 จุดขึ้นพิเศษ: ${els.pickupSpecial.value.trim() || '-'}`
+      ];
+      els.reviewBox.textContent = lines.join('\n');
+      const price = totalPrice();
+      els.priceText.textContent = price ? `ยอดรวม ${money(price)} บาท` : 'รอคำนวณราคา';
+    }
+
+    function canGoStep(target) {
+      if (target <= 0) return true;
+      if (!state.date) return false;
+      if (target <= 1) return true;
+      if (!state.pickup) return false;
+      if (target <= 2) return true;
+      if (!state.dropoff) return false;
+      if (target <= 3) return true;
+      if (!state.schedule) return false;
+      if (target <= 4) return true;
+      return Boolean(els.customerName.value.trim() && els.phone.value.trim());
+    }
+
+    function showStep(index) {
+      state.step = Math.max(0, Math.min(5, index));
+      els.panels.forEach((panel, i) => panel.classList.toggle('active', i === state.step));
+      els.dots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === state.step);
+        dot.classList.toggle('done', i < state.step);
+      });
+      els.stepText.textContent = `ขั้นที่ ${state.step + 1} จาก 6`;
+      els.stepName.textContent = steps[state.step];
+      els.progressFill.style.width = `${((state.step + 1) / 6) * 100}%`;
+      els.back.disabled = state.step === 0;
+      els.next.textContent = state.step === 5 ? 'ยืนยันรายการจอง' : 'ถัดไป';
+      updateReview();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goNext() {
+      if (state.step < 5) showStep(state.step + 1);
+    }
+
     async function initLiff(liffId) {
       if (!liffId || !window.liff) return;
       try {
         await liff.init({ liffId });
-        liffReady = true;
+        state.liffReady = true;
       } catch (error) {
         console.warn(error);
       }
@@ -694,97 +704,65 @@
     async function loadInitial() {
       try {
         const config = await api('/api/liff/config');
+        state.paymentQrUrl = config.paymentQrUrl || '';
         await initLiff(config.liffId);
         if (!config.bookingOpen) {
           setStatus('ขณะนี้อยู่นอกเวลารับจองอัตโนมัติ 07.00-22.00 น. สามารถดูข้อมูลได้ แต่ยังยืนยันจองไม่ได้ค่ะ');
         }
 
         const data = await api('/api/liff/options');
-        optionData.dates = data.dates || [];
-        optionData.pickups = data.pickups || [];
-        setOptions(els.date, optionData.dates, 'เลือกวันที่เดินทาง');
-        setOptions(els.pickup, optionData.pickups, 'เลือกจุดขึ้นหลัก');
-        els.dropoff.disabled = true;
-        els.schedule.disabled = true;
-        if (!optionData.dates.length) setStatus('ยังไม่มีวันที่เปิดให้จองในระบบ กรุณาติดต่อแอดมินค่ะ');
-        updateSummary();
+        state.dates = data.dates || [];
+        state.pickups = data.pickups || [];
+        renderChoices();
+        showStep(0);
       } catch (error) {
         setStatus(error.message);
       }
     }
 
     async function loadDropoffs() {
-      els.dropoff.innerHTML = '<option value="">กำลังโหลดจุดลง...</option>';
-      els.dropoff.disabled = true;
-      els.schedule.innerHTML = '<option value="">เลือกจุดขึ้นและจุดลงก่อน</option>';
-      els.schedule.disabled = true;
-      optionData.dropoffs = [];
-      optionData.schedules = [];
-      renderSchedulePreview([]);
-      updateSummary();
-      if (!els.pickup.value) return;
+      if (!state.pickup) return;
       try {
-        const data = await api(`/api/liff/dropoffs?pickupId=${encodeURIComponent(els.pickup.value)}`);
-        optionData.dropoffs = data.dropoffs || [];
-        setOptions(els.dropoff, optionData.dropoffs, 'เลือกจุดลง');
+        const data = await api(`/api/liff/dropoffs?pickupId=${encodeURIComponent(state.pickup.id)}`);
+        state.dropoffs = data.dropoffs || [];
+        renderChoices();
       } catch (error) {
         setStatus(error.message);
-      }
-    }
-
-    function renderSchedulePreview(schedules) {
-      els.schedulePreview.innerHTML = '';
-      els.schedulePreview.classList.toggle('show', schedules.length > 0);
-      for (const item of schedules.slice(0, 6)) {
-        const chip = document.createElement('div');
-        chip.className = 'schedule-chip';
-        chip.innerHTML = `<span>${item.origin} ${item.departureTime}</span><span>${item.busNumber ? `รถ ${item.busNumber}` : ''}</span>`;
-        els.schedulePreview.append(chip);
       }
     }
 
     async function loadSchedules() {
-      els.schedule.innerHTML = '<option value="">กำลังโหลดรอบรถ...</option>';
-      els.schedule.disabled = true;
-      optionData.schedules = [];
-      renderSchedulePreview([]);
-      updateSummary();
-      if (!els.date.value || !els.pickup.value || !els.dropoff.value) return;
+      if (!state.date || !state.pickup || !state.dropoff) {
+        renderChoices();
+        return;
+      }
       try {
         const query = new URLSearchParams({
-          date: els.date.value,
-          pickupId: els.pickup.value,
-          dropoffId: els.dropoff.value
+          date: state.date.value,
+          pickupId: state.pickup.id,
+          dropoffId: state.dropoff.id
         });
         const data = await api(`/api/liff/schedules?${query}`);
-        optionData.schedules = data.schedules || [];
-        const schedules = optionData.schedules.map((item) => ({
-          value: JSON.stringify({ routeId: item.routeId, departureTime: item.departureTime }),
-          label: `${item.origin} ${item.departureTime}${item.busNumber ? ` · รถ ${item.busNumber}` : ''}`
-        }));
-        setOptions(els.schedule, schedules, schedules.length ? 'เลือกรอบรถ' : 'ไม่พบรอบรถ');
-        renderSchedulePreview(optionData.schedules);
-        if (!schedules.length) setStatus('ไม่พบรอบรถสำหรับเส้นทางนี้ ลองเปลี่ยนจุดขึ้น/จุดลง หรือติดต่อแอดมินค่ะ');
-        else setStatus('');
+        state.schedules = data.schedules || [];
+        renderChoices();
       } catch (error) {
         setStatus(error.message);
       }
     }
 
-    async function submitBooking(event) {
-      event.preventDefault();
+    async function submitBooking() {
       setStatus('');
-      els.submit.disabled = true;
-      els.submit.textContent = 'กำลังส่งข้อมูล...';
+      els.next.disabled = true;
+      els.next.textContent = 'กำลังส่งข้อมูล...';
       try {
-        const schedule = JSON.parse(els.schedule.value || '{}');
+        if (!canGoStep(5)) throw new Error('กรุณากรอกข้อมูลให้ครบก่อนยืนยันค่ะ');
         const payload = {
-          date: els.date.value,
-          pickupId: els.pickup.value,
-          dropoffId: els.dropoff.value,
-          routeId: schedule.routeId,
-          departureTime: schedule.departureTime,
-          seats: els.seats.value,
+          date: state.date.value,
+          pickupId: state.pickup.id,
+          dropoffId: state.dropoff.id,
+          routeId: state.schedule.routeId,
+          departureTime: state.schedule.departureTime,
+          seats: seats(),
           pickupSpecial: els.pickupSpecial.value,
           customerName: els.customerName.value,
           phone: els.phone.value
@@ -794,6 +772,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        els.form.style.display = 'none';
+        document.querySelector('.progress-card').style.display = 'none';
+        els.nav.style.display = 'none';
         els.summary.textContent = data.summary;
         if (data.paymentQrUrl) {
           els.qr.src = data.paymentQrUrl;
@@ -801,36 +782,43 @@
         }
         els.result.classList.add('show');
         els.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        if (liffReady && liff.isInClient()) {
+        if (state.liffReady && liff.isInClient()) {
           await liff.sendMessages([{ type: 'text', text: `ส่งรายการจองจากแบบฟอร์มแล้วค่ะ\n\n${data.summary}` }]).catch(() => {});
         }
       } catch (error) {
         setStatus(error.message);
       } finally {
-        els.submit.disabled = false;
-        els.submit.textContent = '✅ ยืนยันรายการจอง';
+        els.next.disabled = false;
+        els.next.textContent = state.step === 5 ? 'ยืนยันรายการจอง' : 'ถัดไป';
       }
     }
 
-    els.date.addEventListener('change', () => {
-      loadSchedules();
-      updateSummary();
-    });
-    els.pickup.addEventListener('change', loadDropoffs);
-    els.dropoff.addEventListener('change', loadSchedules);
-    els.schedule.addEventListener('change', updateSummary);
-    els.seats.addEventListener('input', updateSummary);
-    els.customerName.addEventListener('input', updateSummary);
-    els.phone.addEventListener('input', updateSummary);
-    els.form.addEventListener('submit', submitBooking);
-    els.reset.addEventListener('click', () => {
-      els.form.reset();
-      els.dropoff.disabled = true;
-      els.schedule.disabled = true;
-      els.result.classList.remove('show');
-      renderSchedulePreview([]);
+    els.back.addEventListener('click', () => showStep(state.step - 1));
+    els.next.addEventListener('click', () => {
+      if (state.step === 5) return submitBooking();
+      if (!canGoStep(state.step + 1)) {
+        setStatus('กรุณาเลือกข้อมูลในขั้นตอนนี้ก่อนค่ะ');
+        return;
+      }
       setStatus('');
-      updateSummary();
+      goNext();
+    });
+    els.dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const target = Number(dot.dataset.go);
+        if (!canGoStep(target)) {
+          setStatus('กรุณาทำขั้นตอนก่อนหน้าให้ครบก่อนค่ะ');
+          return;
+        }
+        setStatus('');
+        showStep(target);
+      });
+    });
+    [els.customerName, els.phone, els.seats, els.pickupSpecial].forEach((input) => {
+      input.addEventListener('input', updateReview);
+    });
+    els.close.addEventListener('click', () => {
+      if (state.liffReady && liff.isInClient()) liff.closeWindow();
     });
 
     loadInitial();
