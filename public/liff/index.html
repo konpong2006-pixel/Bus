@@ -22,7 +22,7 @@
       --orange-soft: #fff1df;
       --red: #b42318;
       --shadow: 0 14px 34px rgba(18, 52, 36, 0.12);
-      --radius: 20px;
+      --radius: 16px;
     }
 
     * { box-sizing: border-box; }
@@ -39,18 +39,18 @@
     }
 
     main {
-      width: min(760px, 100%);
+      width: min(680px, 100%);
       margin: 0 auto;
-      padding: 12px 12px 120px;
+      padding: 8px 10px 96px;
     }
 
     .hero {
       position: relative;
       overflow: hidden;
-      min-height: 150px;
-      margin: 0 -12px 12px;
-      padding: 20px 16px 22px;
-      border-radius: 0 0 26px 26px;
+      min-height: 112px;
+      margin: 0 -10px 10px;
+      padding: 15px 14px 16px;
+      border-radius: 0 0 22px 22px;
       color: #fff;
       background:
         linear-gradient(135deg, rgba(5, 105, 67, 0.95), rgba(20, 150, 104, 0.9)),
@@ -61,17 +61,17 @@
     .brand {
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
-      padding: 6px 11px;
+      min-height: 30px;
+      padding: 5px 10px;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.2);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 900;
     }
 
     h1 {
-      margin: 16px 0 6px;
-      font-size: 32px;
+      margin: 12px 0 5px;
+      font-size: 28px;
       line-height: 1.12;
       letter-spacing: 0;
     }
@@ -80,20 +80,20 @@
       margin: 0;
       max-width: 560px;
       color: rgba(255, 255, 255, 0.92);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 650;
     }
 
     .notice {
       display: grid;
-      gap: 9px;
-      margin: 12px 0;
-      padding: 14px;
+      gap: 7px;
+      margin: 10px 0;
+      padding: 11px 12px;
       border: 1px solid #ffd099;
       border-radius: var(--radius);
       background: #fff8ee;
       color: #633800;
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 760;
     }
 
@@ -101,8 +101,8 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      margin: 12px 0;
-      padding: 12px;
+      margin: 10px 0;
+      padding: 10px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: rgba(255, 255, 255, 0.96);
@@ -113,15 +113,15 @@
     .progress-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
+      gap: 10px;
+      margin-bottom: 8px;
       color: var(--green);
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 950;
     }
 
     .progress-bar {
-      height: 12px;
+      height: 9px;
       overflow: hidden;
       border-radius: 999px;
       background: #e6f0eb;
@@ -138,17 +138,17 @@
     .step-dots {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
-      margin-top: 10px;
+      gap: 5px;
+      margin-top: 8px;
     }
 
     .dot {
-      min-height: 38px;
+      min-height: 32px;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 10px;
       background: #f8fffb;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
     }
 
@@ -166,10 +166,10 @@
 
     .step-panel {
       display: none;
-      min-height: 460px;
-      padding: 16px;
+      min-height: 360px;
+      padding: 13px;
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 20px;
       background: var(--panel);
       box-shadow: var(--shadow);
     }
@@ -177,42 +177,42 @@
     .step-panel.active { display: block; }
 
     .step-kicker {
-      margin: 0 0 6px;
+      margin: 0 0 5px;
       color: var(--green);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 950;
     }
 
     .step-title {
-      margin: 0 0 8px;
-      font-size: 28px;
+      margin: 0 0 7px;
+      font-size: 24px;
       line-height: 1.18;
       letter-spacing: 0;
     }
 
     .step-help {
-      margin: 0 0 16px;
+      margin: 0 0 12px;
       color: var(--muted);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 680;
     }
 
     .choice-grid {
       display: grid;
-      gap: 10px;
+      gap: 8px;
     }
 
     .choice {
       width: 100%;
-      min-height: 66px;
+      min-height: 56px;
       border: 2px solid var(--line);
-      border-radius: 18px;
-      padding: 12px 14px;
+      border-radius: 15px;
+      padding: 10px 12px;
       background: #fbfffd;
       color: var(--ink);
       text-align: left;
       font: inherit;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 900;
       cursor: pointer;
     }
@@ -221,7 +221,7 @@
       display: block;
       margin-top: 2px;
       color: var(--muted);
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 760;
     }
 
@@ -234,25 +234,25 @@
 
     .field {
       display: grid;
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: 6px;
+      margin-bottom: 11px;
     }
 
     label {
-      font-size: 19px;
+      font-size: 17px;
       font-weight: 950;
     }
 
     input {
       width: 100%;
-      min-height: 62px;
+      min-height: 54px;
       border: 2px solid #bdd2c8;
-      border-radius: 18px;
-      padding: 12px 14px;
+      border-radius: 15px;
+      padding: 10px 12px;
       background: #fff;
       color: var(--ink);
       font: inherit;
-      font-size: 20px;
+      font-size: 18px;
       outline: none;
     }
 
@@ -264,7 +264,7 @@
     .hint {
       margin: 0;
       color: var(--muted);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 680;
     }
 
@@ -272,18 +272,18 @@
       display: grid;
       gap: 8px;
       white-space: pre-wrap;
-      margin: 14px 0;
-      padding: 14px;
+      margin: 11px 0;
+      padding: 12px;
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 16px;
       background: #f8fffb;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 760;
     }
 
     .price {
       color: var(--green);
-      font-size: 24px;
+      font-size: 21px;
       font-weight: 1000;
     }
 
@@ -295,8 +295,8 @@
       z-index: 20;
       display: grid;
       grid-template-columns: 0.8fr 1.2fr;
-      gap: 10px;
-      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      gap: 8px;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
       border-top: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.96);
       box-shadow: 0 -12px 26px rgba(24, 54, 42, 0.12);
@@ -304,12 +304,12 @@
     }
 
     .nav button, .result-actions button {
-      min-height: 58px;
+      min-height: 50px;
       border: 0;
-      border-radius: 17px;
-      padding: 10px 14px;
+      border-radius: 14px;
+      padding: 8px 12px;
       font: inherit;
-      font-size: 19px;
+      font-size: 17px;
       font-weight: 950;
       cursor: pointer;
     }
@@ -332,19 +332,19 @@
     }
 
     .status {
-      min-height: 28px;
-      margin: 12px 4px;
+      min-height: 24px;
+      margin: 10px 4px;
       color: var(--red);
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 850;
     }
 
     .result {
       display: none;
-      margin-top: 14px;
-      padding: 16px;
+      margin-top: 12px;
+      padding: 14px;
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 20px;
       background: var(--panel);
       box-shadow: var(--shadow);
     }
@@ -353,14 +353,14 @@
 
     .result h2 {
       margin: 0 0 8px;
-      font-size: 27px;
+      font-size: 24px;
       line-height: 1.2;
     }
 
     .result p {
       margin: 8px 0;
       color: var(--muted);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
     }
 
@@ -378,17 +378,20 @@
 
     .result-actions {
       display: grid;
-      gap: 10px;
-      margin-top: 14px;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     @media (max-width: 480px) {
-      main { padding-inline: 10px; }
-      h1 { font-size: 30px; }
-      .step-panel { min-height: 450px; padding: 14px; }
-      .step-title { font-size: 26px; }
-      .choice { font-size: 19px; }
-      .dot { font-size: 12px; min-height: 34px; }
+      main { padding-inline: 8px; }
+      h1 { font-size: 26px; }
+      .hero p { font-size: 15px; }
+      .notice { font-size: 14px; }
+      .step-panel { min-height: 340px; padding: 12px; }
+      .step-title { font-size: 22px; }
+      .step-help { font-size: 15px; }
+      .choice { font-size: 17px; min-height: 52px; }
+      .dot { font-size: 11px; min-height: 30px; }
     }
   </style>
 </head>
