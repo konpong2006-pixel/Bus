@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
-import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
+import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, getRoutes, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
 import { bangkokDate, bangkokHour, thaiDate } from './time.js';
@@ -19,6 +19,7 @@ app.use(express.static('public'));
 app.use('/api/liff', express.json({ limit: '2mb' }));
 
 const button = (label, data, displayText = label) => ({ type: 'action', action: { type: 'postback', label, data, displayText } });
+const uriButton = (label, uri) => ({ type: 'action', action: { type: 'uri', label, uri } });
 const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
 
 function chunk(items, size = 13) { return items.slice(0, size); }
@@ -566,7 +567,18 @@ async function dateMessage(userId, text, source = null) {
   if (typedSchedule) return typedSchedule;
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
-  if (/เริ่มถามใหม่|ถามใหม่|เริ่มใหม่|จองใหม่|reset|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
+  const current = userState(userId);
+  if (current.flowStep === 'check_date') {
+    const date = parseTypedDate(text);
+    if (!date) return askScheduleDate(userId);
+    return scheduleSummaryForDate(userId, date);
+  }
+  if (wantsScheduleCheck(text)) {
+    const date = parseTypedDate(text);
+    if (date) return scheduleSummaryForDate(userId, date);
+    return askScheduleDate(userId);
+  }
+  if (/เริ่มถามใหม่|ถามใหม่|เริ่มใหม่|จองใหม่|reset|restart/.test(cleanCustomerText(text))) return start(userId);
   if (/จอง|ซื้อตั๋ว/.test(text)) return bookingModePrompt();
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId, source);
   const date = parseTypedDate(text);
@@ -728,22 +740,104 @@ ${dateList}
   ]);
 }
 
-async function dateButtons() {
+async function dateButtons(action = 'date') {
   const dates = await availableScheduleDates();
   return dates.map((date) => {
     const day = String(Number(date.slice(8, 10)));
-    return button(day, `action=date&value=${date}`, day);
+    return button(day, `action=${action}&value=${date}`, day);
   });
+}
+
+function liffBookingUrl() {
+  const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '');
+  return baseUrl ? `${baseUrl}/liff` : 'https://bus-test-wsena.onrender.com/liff';
+}
+
+function wantsScheduleCheck(text) {
+  return /เช็กรอบ|เช็ครอบ|ตรวจรอบ|ดูรอบ|รอบรถ|มีรอบ|รอบไหน|กี่โมง/.test(cleanCustomerText(text));
+}
+
+async function askScheduleDate(userId) {
+  setState(userId, { flowStep: 'check_date', booking: null });
+  const dates = await availableScheduleDates();
+  const dateList = dates.length
+    ? dates.map((date) => `- ${thaiDate(date)}`).join('\n')
+    : '- ตอนนี้ยังไม่มีวันที่เปิดให้เช็กในระบบ';
+
+  return quick(`📅 ต้องการเช็กรอบรถของวันไหนคะ
+
+ตอนนี้เช็กได้เฉพาะวันที่มีข้อมูลในระบบ:
+${dateList}
+
+👇 กดเลขวันที่ด้านล่าง หรือพิมพ์วันที่ได้เลยค่ะ
+เช่น 12, 12/8, วันที่ 12`, [
+    ...await dateButtons('check_date'),
+    button('ติดต่อแอดมิน', 'action=contact_admin')
+  ]);
+}
+
+async function scheduleSummaryForDate(userId, date) {
+  if (!(await hasSchedulesOnDate(date))) {
+    return quick(`ขออภัยค่ะ ยังไม่พบรอบรถของวันที่ ${thaiDate(date)} ในระบบ 🙏
+
+สามารถเช็กรอบวันอื่น หรือให้แอดมินช่วยตรวจสอบเพิ่มเติมได้ค่ะ`, [
+      button('เช็กรอบวันอื่น', 'action=check_schedule'),
+      button('ติดต่อแอดมิน', 'action=contact_admin')
+    ]);
+  }
+
+  const routes = await getRoutes();
+  const routeGroups = [];
+  for (const route of routes) {
+    const schedules = await schedulesFor(route.id, date);
+    if (!schedules.length) continue;
+    routeGroups.push({
+      route,
+      schedules
+    });
+  }
+
+  if (!routeGroups.length) {
+    return quick(`ขออภัยค่ะ ยังไม่พบรอบรถของวันที่ ${thaiDate(date)} ในระบบ 🙏
+
+สามารถเช็กรอบวันอื่น หรือให้แอดมินช่วยตรวจสอบเพิ่มเติมได้ค่ะ`, [
+      button('เช็กรอบวันอื่น', 'action=check_schedule'),
+      button('ติดต่อแอดมิน', 'action=contact_admin')
+    ]);
+  }
+
+  const groupsText = routeGroups.map(({ route, schedules }) => {
+    const lines = schedules.map((schedule) => {
+      const busText = schedule.busNumber ? ` รถ ${schedule.busNumber}` : '';
+      return `- ${route.origin} ${schedule.departureTime}${busText}`;
+    }).join('\n');
+    return `🚌 ${route.name}\n${lines}`;
+  }).join('\n\n');
+
+  setState(userId, { date, flowStep: 'check_result' });
+  return quick(`📅 รอบรถวันที่ ${thaiDate(date)}
+
+${groupsText}
+
+ต้องการดำเนินการต่อแบบไหนคะ`, [
+    uriButton('จองผ่านเว็บ', liffBookingUrl()),
+    button('จองกับแอดมิน', 'action=contact_admin'),
+    button('เช็กรอบวันอื่น', 'action=check_schedule')
+  ]);
 }
 
 function bookingModePrompt() {
   return quick(`ต้องการจองแบบไหนคะ 🎫
+
+🔎 เช็กรอบรถ
+ระบบจะแสดงรอบรถตามวันที่ที่มีข้อมูลในระบบค่ะ
 
 🤖 จองตั๋วอัตโนมัติ
 ระบบจะพาเลือกวันที่ จุดขึ้น จุดลง รอบรถ และชำระเงินในแชทนี้ค่ะ
 
 👤 จองกับแอดมิน
 แอดมินจะเข้ามาดูแลและตอบในแชทนี้ค่ะ`, [
+    button('เช็กรอบรถ', 'action=check_schedule'),
     button('จองอัตโนมัติ', 'action=auto_booking'),
     button('จองกับแอดมิน', 'action=contact_admin')
   ]);
@@ -1159,7 +1253,8 @@ async function handleEvent(event) {
     if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
       const value = cleanCustomerText(event.message.text);
       state.set(userId, {});
-      message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
+      if (wantsScheduleCheck(value)) message = await askScheduleDate(userId);
+      else message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
     } else {
       message = await typedBookingModeMessage(userId, event.message.text, event.source)
         ?? await dateMessage(userId, event.message.text, event.source);
@@ -1172,6 +1267,8 @@ async function handleEvent(event) {
     const action = params.get('action');
     if (action === 'restart') message = await start(userId);
     if (action === 'start_booking') message = bookingModePrompt();
+    if (action === 'check_schedule') message = await askScheduleDate(userId);
+    if (action === 'check_date') message = await scheduleSummaryForDate(userId, params.get('value'));
     if (action === 'auto_booking') message = await askBookingDate(userId, event.source);
     if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId, event.source);
     if (action === 'date') {
