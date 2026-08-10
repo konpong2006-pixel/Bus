@@ -62,11 +62,11 @@ function unclearHandoffToAdmin(userId) {
   setState(userId, { handoffToAdmin: true, booking: null });
   return {
     type: 'text',
-    text: 'ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏\n\nเดี๋ยวให้แอดมินมาตอบต่อนะคะ\nหากต้องการให้บอทเริ่มตอบใหม่ ให้พิมพ์ว่า เริ่มใหม่ หรือ จองตั๋ว ค่ะ'
+    text: 'ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏\n\nเดี๋ยวให้แอดมินมาตอบต่อนะคะ\nหากต้องการให้บอทเริ่มถามใหม่ ให้พิมพ์ว่า เริ่มถามใหม่ หรือ จองตั๋ว ค่ะ'
   };
 }
 function shouldResumeFromHandoff(text) {
-  return /เริ่มใหม่|จองตั๋ว|จองตัว|เช็กรอบ|ตรวจรอบ|ดูรอบ|restart/i.test(cleanCustomerText(text));
+  return /เริ่มถามใหม่|ถามใหม่|เริ่มใหม่|จองใหม่|จองตั๋ว|จองตัว|เช็กรอบ|ตรวจรอบ|ดูรอบ|reset|restart/i.test(cleanCustomerText(text));
 }
 function isWaitingForCustomerChoice(userId) {
   const current = userState(userId);
@@ -565,7 +565,7 @@ async function dateMessage(userId, text, source = null) {
   if (typedSchedule) return typedSchedule;
   const typedChoice = await typedStopChoice(userId, text);
   if (typedChoice) return typedChoice;
-  if (/เริ่มใหม่|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
+  if (/เริ่มถามใหม่|ถามใหม่|เริ่มใหม่|จองใหม่|reset|restart|เช็กรอบ|ตรวจรอบ|ดูรอบ/.test(cleanCustomerText(text))) return start(userId);
   if (/จอง|ซื้อตั๋ว/.test(text)) return bookingModePrompt();
   if (/จองล่วงหน้า|เดือนหน้า|เดือนถัดไป|เทศกาล|ติดต่อแอดมิน|หาแอดมิน|โทร/.test(text)) return handoffToAdmin(userId, source);
   const date = parseTypedDate(text);
@@ -1036,9 +1036,9 @@ async function result(userId, routeId, departureTime) {
 function fallbackMessage() {
   return quick(`ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏
 
-กรุณากด เริ่มใหม่ เพื่อเลือกข้อมูลอีกครั้ง
+กรุณากด เริ่มถามใหม่ เพื่อเลือกข้อมูลอีกครั้ง
 หรือกด ติดต่อแอดมิน หากไม่สะดวกใช้งานระบบอัตโนมัติค่ะ`, [
-    button('เริ่มใหม่', 'action=restart'),
+    button('เริ่มถามใหม่', 'action=restart'),
     button('ติดต่อแอดมิน', 'action=contact_admin')
   ]);
 }
