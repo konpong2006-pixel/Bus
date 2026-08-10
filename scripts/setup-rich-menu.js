@@ -89,11 +89,27 @@ async function main() {
     chatBarText,
     areas: [
       {
-        bounds: { x: 0, y: 0, width: 2500, height: 843 },
+        bounds: { x: 0, y: 0, width: 1650, height: 843 },
         action: {
           type: 'uri',
           label: 'จองตั๋ว',
           uri: baseUrl
+        }
+      },
+      {
+        bounds: { x: 1650, y: 0, width: 850, height: 421 },
+        action: {
+          type: 'message',
+          label: 'เช็กรอบรถ',
+          text: 'เช็กรอบรถ'
+        }
+      },
+      {
+        bounds: { x: 1650, y: 421, width: 850, height: 422 },
+        action: {
+          type: 'message',
+          label: 'ติดต่อแอดมิน',
+          text: 'ติดต่อแอดมิน'
         }
       }
     ]
