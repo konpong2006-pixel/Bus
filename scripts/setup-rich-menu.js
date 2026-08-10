@@ -56,11 +56,14 @@ async function lineApi(pathname, options = {}) {
 
 async function uploadRichMenuImage(richMenuId) {
   const image = fs.readFileSync(imagePath);
+  const contentType = path.extname(imagePath).toLowerCase() === '.jpg' || path.extname(imagePath).toLowerCase() === '.jpeg'
+    ? 'image/jpeg'
+    : 'image/png';
   const response = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${requireValue(token, 'LINE channel access token')}`,
-      'Content-Type': 'image/png'
+      'Content-Type': contentType
     },
     body: image
   });
