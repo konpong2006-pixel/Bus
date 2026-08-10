@@ -778,12 +778,15 @@ ${dateList}
 
 async function scheduleSummaryForDate(userId, date) {
   if (!(await hasSchedulesOnDate(date))) {
-    return quick(`ขออภัยค่ะ ยังไม่พบรอบรถของวันที่ ${thaiDate(date)} ในระบบ 🙏
+    setState(userId, { handoffToAdmin: true, booking: null, flowStep: null });
+    return {
+      type: 'text',
+      text: `ขออภัยค่ะ วันที่ ${thaiDate(date)} ยังไม่มีข้อมูลรอบรถในระบบ 🙏
 
-สามารถเช็กรอบวันอื่น หรือให้แอดมินช่วยตรวจสอบเพิ่มเติมได้ค่ะ`, [
-      button('เช็กรอบวันอื่น', 'action=check_schedule'),
-      button('ติดต่อแอดมิน', 'action=contact_admin')
-    ]);
+เดี๋ยวให้แอดมินเข้ามาช่วยตรวจสอบและตอบต่อในแชทนี้นะคะ
+
+หากเป็นเรื่องเร่งด่วน โทร 092-774-4341 ได้ค่ะ`
+    };
   }
 
   const routes = await getRoutes();
@@ -798,12 +801,15 @@ async function scheduleSummaryForDate(userId, date) {
   }
 
   if (!routeGroups.length) {
-    return quick(`ขออภัยค่ะ ยังไม่พบรอบรถของวันที่ ${thaiDate(date)} ในระบบ 🙏
+    setState(userId, { handoffToAdmin: true, booking: null, flowStep: null });
+    return {
+      type: 'text',
+      text: `ขออภัยค่ะ วันที่ ${thaiDate(date)} ยังไม่มีข้อมูลรอบรถในระบบ 🙏
 
-สามารถเช็กรอบวันอื่น หรือให้แอดมินช่วยตรวจสอบเพิ่มเติมได้ค่ะ`, [
-      button('เช็กรอบวันอื่น', 'action=check_schedule'),
-      button('ติดต่อแอดมิน', 'action=contact_admin')
-    ]);
+เดี๋ยวให้แอดมินเข้ามาช่วยตรวจสอบและตอบต่อในแชทนี้นะคะ
+
+หากเป็นเรื่องเร่งด่วน โทร 092-774-4341 ได้ค่ะ`
+    };
   }
 
   const groupsText = routeGroups.map(({ route, schedules }) => {
