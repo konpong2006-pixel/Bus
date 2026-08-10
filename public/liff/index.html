@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จองตั๋วรถร่วมวิศวกรเสนา</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7f5;
+      --ink: #15251f;
+      --muted: #5c6a64;
+      --line: #d8e1dc;
+      --green: #087a48;
+      --green-dark: #075f3a;
+      --red: #b42318;
+      --panel: #ffffff;
+      --blue: #1c6dd0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header {
+      padding: 18px 0 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .notice {
+      border: 1px solid #ffd7a8;
+      background: #fff7ed;
+      color: #6b3a05;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 12px 0;
+      font-size: 15px;
+    }
+
+    form, .result {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    select, input {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #b9c7c0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    select:disabled, input:disabled {
+      background: #eef2f0;
+      color: #7a8580;
+    }
+
+    .hint {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary {
+      flex: 1;
+      background: var(--green);
+      color: #fff;
+    }
+
+    .primary:disabled {
+      background: #9db5aa;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #e8f0ec;
+      color: var(--green-dark);
+    }
+
+    .status {
+      min-height: 24px;
+      margin: 12px 0 0;
+      color: var(--red);
+      font-weight: 650;
+    }
+
+    .result {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .result.show { display: block; }
+
+    .summary {
+      white-space: pre-wrap;
+      background: #f7faf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .qr {
+      display: none;
+      width: min(260px, 100%);
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      margin: 8px auto 0;
+    }
+
+    .qr.show { display: block; }
+
+    .line-note {
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    @media (max-width: 560px) {
+      main { padding: 12px; }
+      .grid { grid-template-columns: 1fr; gap: 0; }
+      h1 { font-size: 21px; }
+      .actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>จองตั๋วรถร่วมวิศวกรเสนา</h1>
+      <p class="sub">เลือกข้อมูลจากช่องด้านล่าง ลดการพิมพ์ผิดในแชท LINE</p>
+    </header>
+
+    <div class="notice">
+      ℹ️ ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ<br>
+      ⚠️ ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง<br>
+      ⏰ รับจองอัตโนมัติ 07.00-22.00 น.
+    </div>
+
+    <form id="bookingForm">
+      <div class="field">
+        <label for="date">📅 วันที่เดินทาง</label>
+        <select id="date" required>
+          <option value="">กำลังโหลดวันที่...</option>
+        </select>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="pickup">📍 จุดขึ้นหลัก</label>
+          <select id="pickup" required disabled>
+            <option value="">เลือกวันที่ก่อน</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="dropoff">🏁 จุดลง</label>
+          <select id="dropoff" required disabled>
+            <option value="">เลือกจุดขึ้นก่อน</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="schedule">⏰ รอบรถ</label>
+        <select id="schedule" required disabled>
+          <option value="">เลือกจุดขึ้นและจุดลงก่อน</option>
+        </select>
+        <p class="hint">ระบบจะแสดงเฉพาะรอบที่สถานะ “ออกแน่นอน” เท่านั้นค่ะ</p>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="seats">🎟️ จำนวนที่นั่ง</label>
+          <input id="seats" inputmode="numeric" autocomplete="off" value="1" required>
+        </div>
+
+        <div class="field">
+          <label for="pickupSpecial">📌 จุดขึ้นพิเศษ</label>
+          <input id="pickupSpecial" autocomplete="off" placeholder="เช่น หน้าบิ๊กซี / สะพานลอย / -">
+          <p class="hint">ถ้าขึ้นที่จุดหลัก ให้พิมพ์ - หรือ บขส</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="customerName">👤 ชื่อผู้จอง</label>
+          <input id="customerName" autocomplete="name" placeholder="เช่น คุณกมลพร" required>
+        </div>
+
+        <div class="field">
+          <label for="phone">📞 เบอร์โทร</label>
+          <input id="phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 094-172-4569" required>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="submitBtn" type="submit">ยืนยันรายการจอง</button>
+        <button class="secondary" id="resetBtn" type="button">ล้างข้อมูล</button>
+      </div>
+      <div class="status" id="status" role="status"></div>
+    </form>
+
+    <section class="result" id="result">
+      <strong>✅ ส่งรายการให้แอดมินแล้วค่ะ</strong>
+      <p>กรุณาตรวจสอบยอด แล้วโอนเงินตาม QR ด้านล่าง จากนั้นส่งสลิปในแชท LINE เดิมค่ะ</p>
+      <div class="summary" id="summary"></div>
+      <img class="qr" id="qr" alt="QR สำหรับโอนเงิน">
+      <p class="line-note">หลังโอนเสร็จ ให้กลับไปส่งรูปสลิปในแชท LINE นะคะ</p>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      form: document.querySelector('#bookingForm'),
+      date: document.querySelector('#date'),
+      pickup: document.querySelector('#pickup'),
+      dropoff: document.querySelector('#dropoff'),
+      schedule: document.querySelector('#schedule'),
+      seats: document.querySelector('#seats'),
+      pickupSpecial: document.querySelector('#pickupSpecial'),
+      customerName: document.querySelector('#customerName'),
+      phone: document.querySelector('#phone'),
+      submit: document.querySelector('#submitBtn'),
+      reset: document.querySelector('#resetBtn'),
+      status: document.querySelector('#status'),
+      result: document.querySelector('#result'),
+      summary: document.querySelector('#summary'),
+      qr: document.querySelector('#qr')
+    };
+
+    let liffReady = false;
+
+    function setStatus(text, isError = true) {
+      els.status.textContent = text || '';
+      els.status.style.color = isError ? '#b42318' : '#087a48';
+    }
+
+    function option(value, label) {
+      const item = document.createElement('option');
+      item.value = value;
+      item.textContent = label;
+      return item;
+    }
+
+    function setOptions(select, items, placeholder) {
+      select.innerHTML = '';
+      select.append(option('', placeholder));
+      for (const item of items) select.append(option(item.value ?? item.id, item.label ?? item.name));
+      select.disabled = false;
+    }
+
+    async function api(path, init) {
+      const response = await fetch(path, init);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'เกิดข้อผิดพลาด');
+      return data;
+    }
+
+    async function initLiff(liffId) {
+      if (!liffId || !window.liff) return;
+      try {
+        await liff.init({ liffId });
+        liffReady = true;
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    async function loadInitial() {
+      try {
+        const config = await api('/api/liff/config');
+        await initLiff(config.liffId);
+        if (!config.bookingOpen) setStatus('ตอนนี้อยู่นอกเวลารับจองอัตโนมัติ 07.00-22.00 น.', true);
+
+        const data = await api('/api/liff/options');
+        setOptions(els.date, data.dates, 'เลือกวันที่เดินทาง');
+        setOptions(els.pickup, data.pickups, 'เลือกจุดขึ้นหลัก');
+        els.dropoff.disabled = true;
+        els.schedule.disabled = true;
+        if (!data.dates.length) setStatus('ยังไม่มีวันที่เปิดให้จองในระบบ กรุณาติดต่อแอดมินค่ะ');
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function loadDropoffs() {
+      els.dropoff.innerHTML = '<option value="">กำลังโหลดจุดลง...</option>';
+      els.dropoff.disabled = true;
+      els.schedule.innerHTML = '<option value="">เลือกจุดขึ้นและจุดลงก่อน</option>';
+      els.schedule.disabled = true;
+      if (!els.pickup.value) return;
+      try {
+        const data = await api(`/api/liff/dropoffs?pickupId=${encodeURIComponent(els.pickup.value)}`);
+        setOptions(els.dropoff, data.dropoffs, 'เลือกจุดลง');
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function loadSchedules() {
+      els.schedule.innerHTML = '<option value="">กำลังโหลดรอบรถ...</option>';
+      els.schedule.disabled = true;
+      if (!els.date.value || !els.pickup.value || !els.dropoff.value) return;
+      try {
+        const query = new URLSearchParams({
+          date: els.date.value,
+          pickupId: els.pickup.value,
+          dropoffId: els.dropoff.value
+        });
+        const data = await api(`/api/liff/schedules?${query}`);
+        const schedules = data.schedules.map((item) => ({
+          value: JSON.stringify({ routeId: item.routeId, departureTime: item.departureTime }),
+          label: `${item.origin} ${item.departureTime}${item.busNumber ? ` · รถ ${item.busNumber}` : ''}`
+        }));
+        setOptions(els.schedule, schedules, schedules.length ? 'เลือกรอบรถ' : 'ไม่พบรอบรถ');
+        if (!schedules.length) setStatus('ไม่พบรอบรถสำหรับเส้นทางนี้ ลองเปลี่ยนจุดขึ้น/จุดลง หรือติดต่อแอดมินค่ะ');
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    async function submitBooking(event) {
+      event.preventDefault();
+      setStatus('');
+      els.submit.disabled = true;
+      els.submit.textContent = 'กำลังส่งข้อมูล...';
+      try {
+        const schedule = JSON.parse(els.schedule.value || '{}');
+        const payload = {
+          date: els.date.value,
+          pickupId: els.pickup.value,
+          dropoffId: els.dropoff.value,
+          routeId: schedule.routeId,
+          departureTime: schedule.departureTime,
+          seats: els.seats.value,
+          pickupSpecial: els.pickupSpecial.value,
+          customerName: els.customerName.value,
+          phone: els.phone.value
+        };
+        const data = await api('/api/liff/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        els.summary.textContent = data.summary;
+        if (data.paymentQrUrl) {
+          els.qr.src = data.paymentQrUrl;
+          els.qr.classList.add('show');
+        }
+        els.result.classList.add('show');
+        els.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (liffReady && liff.isInClient()) {
+          await liff.sendMessages([{ type: 'text', text: `ส่งรายการจองจากแบบฟอร์มแล้วค่ะ\n\n${data.summary}` }]).catch(() => {});
+        }
+      } catch (error) {
+        setStatus(error.message);
+      } finally {
+        els.submit.disabled = false;
+        els.submit.textContent = 'ยืนยันรายการจอง';
+      }
+    }
+
+    els.date.addEventListener('change', loadSchedules);
+    els.pickup.addEventListener('change', loadDropoffs);
+    els.dropoff.addEventListener('change', loadSchedules);
+    els.form.addEventListener('submit', submitBooking);
+    els.reset.addEventListener('click', () => {
+      els.form.reset();
+      els.result.classList.remove('show');
+      setStatus('');
+    });
+
+    loadInitial();
+  </script>
+</body>
+</html>

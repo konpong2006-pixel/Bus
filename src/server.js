@@ -16,6 +16,7 @@ const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
 app.use(express.static('public'));
+app.use('/api/liff', express.json({ limit: '2mb' }));
 
 const button = (label, data, displayText = label) => ({ type: 'action', action: { type: 'postback', label, data, displayText } });
 const quick = (text, items) => ({ type: 'text', text, quickReply: { items } });
@@ -794,6 +795,83 @@ function withPaymentQr(message) {
   return qr ? [message, qr] : message;
 }
 
+function paymentQrUrl() {
+  const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '');
+  return baseUrl ? `${baseUrl}/payment-qr.png` : null;
+}
+
+function liffBookingText(booking) {
+  return `🧾 รายการจองจากหน้า LIFF / รอชำระเงิน
+
+📅 วันที่: ${thaiDate(booking.date)}
+🚍 จังหวัดต้นทาง: ${booking.originProvince}
+🏁 จังหวัดปลายทาง: ${booking.destinationProvince}
+⏰ รอบ: ${booking.departureTime}
+📍 จุดขึ้น: ${booking.pickupPoint}
+📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
+
+👤 ผู้จอง: ${booking.customerName}
+📞 เบอร์โทร: ${booking.phone || '-'}
+🎟️ จำนวนที่นั่ง: ${booking.seats} ที่นั่ง
+💰 ยอดที่ต้องชำระ: ${moneyText(lockedPaymentAmount(booking)) || 'รอแอดมินยืนยัน'}
+
+🚌 เบอร์รถ: ${booking.busNumber || 'รอแจ้ง'}
+☎️ เบอร์คนขับ: ${booking.driverPhone || 'รอแจ้ง'}`;
+}
+
+function apiError(res, status, message) {
+  return res.status(status).json({ ok: false, error: message });
+}
+
+async function liffBookingFromPayload(payload) {
+  const date = String(payload?.date || '').slice(0, 10);
+  const pickupId = String(payload?.pickupId || '').trim();
+  const dropoffId = String(payload?.dropoffId || '').trim();
+  const routeId = String(payload?.routeId || '').trim();
+  const departureTime = String(payload?.departureTime || '').trim();
+  const seats = parseSeats(String(payload?.seats || ''));
+  const customerName = String(payload?.customerName || '').trim();
+  const phone = String(payload?.phone || '').trim();
+  const pickupSpecial = String(payload?.pickupSpecial || '').trim();
+
+  if (!date || !(await hasSchedulesOnDate(date))) throw new Error('วันที่นี้ยังไม่มีรอบรถในระบบ');
+  if (!pickupId || !dropoffId) throw new Error('กรุณาเลือกจุดขึ้นและจุดลง');
+  if (!routeId || !departureTime) throw new Error('กรุณาเลือกรอบรถ');
+  if (!seats || seats < 1) throw new Error('กรุณากรอกจำนวนที่นั่ง');
+  if (!customerName) throw new Error('กรุณากรอกชื่อผู้จอง');
+  if (!/^0[\d\s-]{8,}$/.test(phone)) throw new Error('กรุณากรอกเบอร์โทรให้ถูกต้อง');
+
+  const allowedRoutes = await routesForJourney(pickupId, dropoffId);
+  const route = allowedRoutes.find((item) => item.id === routeId);
+  if (!route) throw new Error('เส้นทางนี้ยังไม่เปิดให้จอง');
+
+  const schedule = (await schedulesFor(routeId, date)).find((item) => item.departureTime === departureTime);
+  if (!schedule) throw new Error('ไม่พบรอบรถนี้ หรือรอบยังไม่ยืนยัน');
+
+  const pickup = route.stops.find((stop) => stop.id === pickupId);
+  const dropoff = route.stops.find((stop) => stop.id === dropoffId);
+  if (!pickup || !dropoff) throw new Error('จุดขึ้นหรือจุดลงไม่ตรงกับสายรถ');
+
+  return withLockedPrice({
+    date,
+    originProvince: route.origin,
+    destinationProvince: dropoff.name,
+    departureTime,
+    pickupPoint: pickup.name,
+    dropoffPoint: dropoff.name,
+    pickupSpecial: normalizePickupSpecial(pickupSpecial || '-', pickup.name),
+    routeId,
+    pickupId,
+    dropoffId,
+    busNumber: schedule.busNumber || '',
+    driverPhone: schedule.driverPhone || '',
+    seats,
+    customerName,
+    phone,
+    status: 'รอชำระเงิน'
+  });
+}
+
 function bookingContact(userId = null, source = null) {
   if (isBookingOpenFor(userId, source)) return withPaymentQr(adminContact());
   return userId ? closeBookingAfterHours(userId) : afterHoursBooking();
@@ -1115,6 +1193,81 @@ async function handleEvent(event) {
 
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/liff', (_req, res) => res.sendFile('index.html', { root: 'public/liff' }));
+app.get('/api/liff/config', (_req, res) => {
+  res.json({
+    ok: true,
+    liffId: process.env.LIFF_ID || '',
+    bookingOpen: isBookingOpen(),
+    paymentQrUrl: paymentQrUrl()
+  });
+});
+app.get('/api/liff/options', async (_req, res) => {
+  try {
+    res.json({
+      ok: true,
+      dates: (await availableScheduleDates(30)).map((date) => ({ value: date, label: thaiDate(date) })),
+      pickups: await pickupStops()
+    });
+  } catch (error) {
+    console.error(error);
+    apiError(res, 500, 'โหลดข้อมูลเริ่มต้นไม่สำเร็จ');
+  }
+});
+app.get('/api/liff/dropoffs', async (req, res) => {
+  try {
+    const pickupId = String(req.query.pickupId || '');
+    if (!pickupId) return apiError(res, 400, 'กรุณาเลือกจุดขึ้น');
+    res.json({ ok: true, dropoffs: await dropoffStops(pickupId) });
+  } catch (error) {
+    console.error(error);
+    apiError(res, 500, 'โหลดจุดลงไม่สำเร็จ');
+  }
+});
+app.get('/api/liff/schedules', async (req, res) => {
+  try {
+    const date = String(req.query.date || '').slice(0, 10);
+    const pickupId = String(req.query.pickupId || '');
+    const dropoffId = String(req.query.dropoffId || '');
+    if (!date || !pickupId || !dropoffId) return apiError(res, 400, 'กรุณาเลือกวันที่ จุดขึ้น และจุดลง');
+
+    const routes = await routesForJourney(pickupId, dropoffId);
+    const groups = await Promise.all(routes.map(async (route) => ({
+      routeId: route.id,
+      routeName: route.name,
+      origin: route.origin,
+      schedules: (await schedulesFor(route.id, date)).map((schedule) => ({
+        routeId: route.id,
+        routeName: route.name,
+        origin: route.origin,
+        departureTime: schedule.departureTime,
+        busNumber: schedule.busNumber || '',
+        driverPhone: schedule.driverPhone || '',
+        seats: schedule.seats
+      }))
+    })));
+    res.json({ ok: true, schedules: groups.flatMap((group) => group.schedules) });
+  } catch (error) {
+    console.error(error);
+    apiError(res, 500, 'โหลดรอบรถไม่สำเร็จ');
+  }
+});
+app.post('/api/liff/bookings', async (req, res) => {
+  try {
+    if (!isBookingOpen()) return apiError(res, 403, 'ขณะนี้ปิดรับการจองอัตโนมัติแล้ว กรุณาเริ่มจองใหม่เวลา 07.00-22.00 น.');
+    const booking = await liffBookingFromPayload(req.body);
+    await pushAdminText(liffBookingText(booking));
+    res.json({
+      ok: true,
+      booking,
+      summary: bookingSummary(booking),
+      paymentQrUrl: paymentQrUrl()
+    });
+  } catch (error) {
+    console.error(error);
+    apiError(res, 400, error.message || 'ยืนยันรายการไม่สำเร็จ');
+  }
+});
 app.post('/webhook', middleware(config), (req, res) => {
   const events = Array.isArray(req.body?.events) ? req.body.events : [];
   Promise.all(events.map(handleEvent)).catch((error) => console.error(error));

@@ -24,6 +24,7 @@ src/slipok.js          ตรวจสลิปผ่าน SlipOK
 src/time.js            เวลาไทย / วันไทย
 apps-script/Code.gs    โค้ด Apps Script สำหรับอ่าน/เขียน Google Sheet และเก็บสลิปลง Drive
 public/payment-qr.png  รูป QR โอนเงินที่บอทส่งให้ลูกค้า
+public/liff/index.html หน้าเว็บ LIFF สำหรับจองตั๋วแบบฟอร์ม
 data/*.json            ข้อมูล fallback/local สำหรับเทสต์
 test/bot.test.js       test หลัก
 .env.example           ตัวอย่าง Environment Variables
@@ -70,6 +71,7 @@ BOT_ENABLED=true
 LINE_CHANNEL_ACCESS_TOKEN=ใส่ token จาก LINE Developers
 LINE_CHANNEL_SECRET=ใส่ secret จาก LINE Developers
 PUBLIC_BASE_URL=https://ชื่อ-render-service.onrender.com
+LIFF_ID=ใส่ LIFF ID จาก LINE Developers ถ้ามี
 PORT=10000
 ```
 
@@ -77,7 +79,55 @@ PORT=10000
 
 - `BOT_ENABLED=true` เปิดบอท
 - `BOT_ENABLED=false` ปิดบอท ไม่ตอบลูกค้า ไม่ตรวจสลิป ไม่แจ้งแอดมิน แต่ webhook ยังรับ LINE ได้ปกติ
+- `LIFF_ID` ใช้กับหน้าเว็บจองใน LINE หากยังไม่ใส่ หน้าเว็บยังเปิดในเบราว์เซอร์ได้ แต่จะยังไม่ผูกกับ LIFF SDK เต็มรูปแบบ
 - หลังแก้ Environment ใน Render ให้กด `Save, rebuild, and deploy`
+
+## หน้าเว็บจองใน LINE / LIFF
+
+หน้าเว็บจองอยู่ที่:
+
+```text
+https://ชื่อ-render-service.onrender.com/liff
+```
+
+ตัวอย่างตัวหลัก:
+
+```text
+https://bus-wbhr.onrender.com/liff
+```
+
+สิ่งที่หน้า LIFF ทำตอนนี้:
+
+- โหลดวันที่ที่มีรอบรถจาก Google Sheet
+- ให้ลูกค้าเลือกวันที่ จุดขึ้น จุดลง และรอบรถด้วย dropdown
+- แสดงเฉพาะรอบที่สถานะเป็น `ออกแน่นอน`
+- ให้กรอกจำนวนที่นั่ง ชื่อ เบอร์โทร และจุดขึ้นพิเศษ
+- กดยืนยันแล้วส่งรายการไปแจ้งแอดมินเป็นสถานะ `รอชำระเงิน`
+- แสดง QR โอนเงินจาก `public/payment-qr.png`
+- หลังโอน ลูกค้ายังต้องส่งรูปสลิปกลับมาในแชท LINE เพื่อให้ระบบเดิมตรวจ/ออกตั๋ว
+
+การสร้าง LIFF ใน LINE Developers:
+
+1. เปิด LINE Developers ของ OA ที่ต้องการใช้
+2. ไปที่แท็บ `LIFF`
+3. กด `Add`
+4. ตั้งชื่อ เช่น `Bus Booking Form`
+5. Endpoint URL ใส่:
+
+```text
+https://ชื่อ-render-service.onrender.com/liff
+```
+
+6. เลือกขนาด `Full`
+7. กดบันทึก แล้วคัดลอก `LIFF ID`
+8. ไป Render แล้วเพิ่ม:
+
+```text
+LIFF_ID=ใส่ LIFF ID ที่ได้
+```
+
+9. กด `Save, rebuild, and deploy`
+10. เอาลิงก์ LIFF ไปใส่ Rich Menu ปุ่ม `จองตั๋ว`
 
 ### Google Sheet / Apps Script
 
