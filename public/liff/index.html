@@ -719,6 +719,55 @@
       }
     }
 
+    async function currentLineUserId() {
+      if (!state.liffReady || !liff.isInClient()) return '';
+      try {
+        const profile = await liff.getProfile();
+        return profile?.userId || '';
+      } catch (error) {
+        console.warn(error);
+        return '';
+      }
+    }
+
+    async function sendBookingToLine(data) {
+      if (!state.liffReady || !liff.isInClient()) return false;
+      const messages = [
+        {
+          type: 'text',
+          text: `กรุณาตรวจสอบรายการจองค่ะ ✅\n\n${data.summary}\n\n📎 หลังโอนเสร็จ กรุณาส่งรูปสลิปในแชทนี้ค่ะ`
+        }
+      ];
+      if (data.paymentQrUrl) {
+        messages.push({
+          type: 'image',
+          originalContentUrl: data.paymentQrUrl,
+          previewImageUrl: data.paymentQrUrl
+        });
+      }
+      try {
+        await liff.sendMessages(messages);
+        liff.closeWindow();
+        return true;
+      } catch (error) {
+        console.warn(error);
+        return false;
+      }
+    }
+
+    function showWebResult(data) {
+      els.form.style.display = 'none';
+      document.querySelector('.progress-card').style.display = 'none';
+      els.nav.style.display = 'none';
+      els.summary.textContent = data.summary;
+      if (data.paymentQrUrl) {
+        els.qr.src = data.paymentQrUrl;
+        els.qr.classList.add('show');
+      }
+      els.result.classList.add('show');
+      els.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     async function loadInitial() {
       try {
         const config = await api('/api/liff/config');
@@ -785,26 +834,16 @@
           seats: seats(),
           pickupSpecial: els.pickupSpecial.value,
           customerName: els.customerName.value,
-          phone: phoneDigits()
+          phone: phoneDigits(),
+          lineUserId: await currentLineUserId()
         };
         const data = await api('/api/liff/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        els.form.style.display = 'none';
-        document.querySelector('.progress-card').style.display = 'none';
-        els.nav.style.display = 'none';
-        els.summary.textContent = data.summary;
-        if (data.paymentQrUrl) {
-          els.qr.src = data.paymentQrUrl;
-          els.qr.classList.add('show');
-        }
-        els.result.classList.add('show');
-        els.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        if (state.liffReady && liff.isInClient()) {
-          await liff.sendMessages([{ type: 'text', text: `ส่งรายการจองจากแบบฟอร์มแล้วค่ะ\n\n${data.summary}` }]).catch(() => {});
-        }
+        const sentToLine = await sendBookingToLine(data);
+        if (!sentToLine) showWebResult(data);
       } catch (error) {
         setStatus(error.message);
       } finally {

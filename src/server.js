@@ -1368,6 +1368,14 @@ app.post('/api/liff/bookings', async (req, res) => {
   try {
     if (!isBookingOpen()) return apiError(res, 403, 'ขณะนี้ปิดรับการจองอัตโนมัติแล้ว กรุณาเริ่มจองใหม่เวลา 07.00-22.00 น.');
     const booking = await liffBookingFromPayload(req.body);
+    const lineUserId = String(req.body?.lineUserId || '').trim();
+    if (lineUserId) {
+      setState(lineUserId, {
+        booking: { ...booking, step: 'awaiting_slip' },
+        handoffToAdmin: false,
+        flowStep: null
+      });
+    }
     await pushAdminText(liffBookingText(booking));
     res.json({
       ok: true,
