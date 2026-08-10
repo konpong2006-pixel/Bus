@@ -49,6 +49,9 @@ function canUseAfterHours(userId, source = null) {
 function isTesterUser(userId, source = null) {
   return canUseAfterHours(userId, source);
 }
+function bookingTimeLimitDisabled() {
+  return ['1', 'true', 'yes', 'ใช่'].includes(String(process.env.DISABLE_BOOKING_TIME_LIMIT ?? '').trim().toLowerCase());
+}
 function isBookingOpenFor(userId, source = null) {
   return isBookingOpen() || canUseAfterHours(userId, source);
 }
@@ -263,6 +266,7 @@ async function testerCommandMessage(event, text) {
       text: `🧪 สถานะระบบทดสอบ
 
 BOT_ENABLED: ${botEnabled() ? 'true' : 'false'}
+DISABLE_BOOKING_TIME_LIMIT: ${bookingTimeLimitDisabled() ? 'true' : 'false'}
 เวลาจองปกติเปิดอยู่: ${isBookingOpen() ? 'ใช่' : 'ไม่ใช่'}
 Tester ข้ามเวลาได้: ${canUseAfterHours(userId, event.source) ? 'ใช่' : 'ไม่ใช่'}
 SIMULATE_SLIP_OK: ${String(process.env.SIMULATE_SLIP_OK ?? 'false')}
@@ -868,6 +872,7 @@ function adminContact() {
 }
 
 function isBookingOpen() {
+  if (bookingTimeLimitDisabled()) return true;
   const hour = bangkokHour();
   return hour >= BOOKING_OPEN_HOUR && hour < BOOKING_CLOSE_HOUR;
 }
