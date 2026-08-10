@@ -1232,20 +1232,24 @@ app.get('/api/liff/schedules', async (req, res) => {
     if (!date || !pickupId || !dropoffId) return apiError(res, 400, 'กรุณาเลือกวันที่ จุดขึ้น และจุดลง');
 
     const routes = await routesForJourney(pickupId, dropoffId);
-    const groups = await Promise.all(routes.map(async (route) => ({
-      routeId: route.id,
-      routeName: route.name,
-      origin: route.origin,
-      schedules: (await schedulesFor(route.id, date)).map((schedule) => ({
+    const groups = await Promise.all(routes.map(async (route) => {
+      const fare = await fareForJourney(route.id, pickupId, dropoffId);
+      return {
         routeId: route.id,
         routeName: route.name,
         origin: route.origin,
-        departureTime: schedule.departureTime,
-        busNumber: schedule.busNumber || '',
-        driverPhone: schedule.driverPhone || '',
-        seats: schedule.seats
-      }))
-    })));
+        schedules: (await schedulesFor(route.id, date)).map((schedule) => ({
+          routeId: route.id,
+          routeName: route.name,
+          origin: route.origin,
+          departureTime: schedule.departureTime,
+          busNumber: schedule.busNumber || '',
+          driverPhone: schedule.driverPhone || '',
+          seats: schedule.seats,
+          fare
+        }))
+      };
+    }));
     res.json({ ok: true, schedules: groups.flatMap((group) => group.schedules) });
   } catch (error) {
     console.error(error);
