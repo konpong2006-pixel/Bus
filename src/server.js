@@ -1303,9 +1303,11 @@ app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/liff', (_req, res) => res.sendFile('index.html', { root: 'public/liff' }));
 app.get('/api/liff/config', (_req, res) => {
+  const liffId = process.env.LIFF_ID || '';
   res.json({
     ok: true,
-    liffId: process.env.LIFF_ID || '',
+    liffId,
+    liffUrl: liffId ? `https://liff.line.me/${liffId}` : '',
     bookingOpen: isBookingOpen(),
     paymentQrUrl: paymentQrUrl()
   });

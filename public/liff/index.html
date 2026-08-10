@@ -732,22 +732,20 @@
 
     async function sendBookingToLine(data) {
       if (!state.liffReady || !liff.isInClient()) return false;
-      const messages = [
-        {
+      try {
+        await liff.sendMessages([{
           type: 'text',
           text: `กรุณาตรวจสอบรายการจองค่ะ ✅\n\n${data.summary}\n\n📎 หลังโอนเสร็จ กรุณาส่งรูปสลิปในแชทนี้ค่ะ`
+        }]);
+        if (data.paymentQrUrl) {
+          await liff.sendMessages([{
+            type: 'image',
+            originalContentUrl: data.paymentQrUrl,
+            previewImageUrl: data.paymentQrUrl
+          }]).catch((error) => console.warn('Send QR failed', error));
         }
-      ];
-      if (data.paymentQrUrl) {
-        messages.push({
-          type: 'image',
-          originalContentUrl: data.paymentQrUrl,
-          previewImageUrl: data.paymentQrUrl
-        });
-      }
-      try {
-        await liff.sendMessages(messages);
-        liff.closeWindow();
+        setStatus('ส่งข้อมูลเข้า LINE แล้ว กำลังกลับไปหน้าแชทค่ะ...', false);
+        setTimeout(() => liff.closeWindow(), 350);
         return true;
       } catch (error) {
         console.warn(error);

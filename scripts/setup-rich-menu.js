@@ -26,7 +26,9 @@ function loadDotEnv() {
 loadDotEnv();
 
 const token = process.env.RICH_MENU_CHANNEL_ACCESS_TOKEN || process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const baseUrl = process.env.RICH_MENU_LINK_URL
+const liffUrl = process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : '';
+const baseUrl = liffUrl
+  || process.env.RICH_MENU_LINK_URL
   || (process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, '')}/liff` : '');
 const imagePath = process.env.RICH_MENU_IMAGE_PATH
   ? path.resolve(process.env.RICH_MENU_IMAGE_PATH)
