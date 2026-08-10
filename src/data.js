@@ -92,9 +92,9 @@ function nextDates(days = 30) {
 }
 
 function scheduleDates(value) {
-  if (isDailySchedule(value)) return nextDates();
+  if (isDailySchedule(value)) return nextDates().map((date) => ({ date, generatedFromDaily: true }));
   const date = String(value ?? '').slice(0, 10);
-  return date ? [date] : [];
+  return date ? [{ date, generatedFromDaily: false }] : [];
 }
 
 function routeTab(routeId) {
@@ -190,7 +190,7 @@ async function loadSheetData() {
       const driverPhone = cleanDriverPhone(row[driverPhoneIndex]) || driverPhonesByBus.get(busNumber);
       const route = routeDefs.find((item) => item.sheetName === String(routeName).trim());
       if (!route) return [];
-      return scheduleDates(row[dateIndex]).map((date) => ({
+      return scheduleDates(row[dateIndex]).map(({ date, generatedFromDaily }) => ({
         id: `${date}-${route.id}-${normalizeTime(departureTime)}`,
         date: String(date).slice(0, 10),
         routeId: route.id,
@@ -201,6 +201,7 @@ async function loadSheetData() {
         note: String(note || '').trim(),
         busNumber,
         driverPhone: String(driverPhone || '').trim(),
+        generatedFromDaily,
         active: true
       }));
     })
@@ -260,14 +261,14 @@ export async function schedulesFor(routeId, date) {
 export async function hasSchedulesOnDate(date) {
   const { schedules, dayOpen } = await busData();
   if (dayOpen.get(date) === false) return false;
-  return schedules.some((item) => item.date === date && item.active);
+  return schedules.some((item) => item.date === date && item.active && !item.generatedFromDaily);
 }
 
 export async function availableScheduleDates(limit = 11) {
   const { schedules, dayOpen } = await busData();
   const today = bangkokDate();
   return [...new Set(schedules
-    .filter((item) => item.active && item.date && item.date >= today && dayOpen.get(item.date) !== false)
+    .filter((item) => item.active && !item.generatedFromDaily && item.date && item.date >= today && dayOpen.get(item.date) !== false)
     .map((item) => item.date))]
     .sort()
     .slice(0, limit);
