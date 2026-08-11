@@ -51,6 +51,11 @@ function canUseAfterHours(userId, source = null) {
 function isTesterUser(userId, source = null) {
   return canUseAfterHours(userId, source);
 }
+function isAdminChat(source = null) {
+  const adminChatIds = afterHoursTestGroupIds();
+  return (source?.groupId && adminChatIds.includes(source.groupId))
+    || (source?.roomId && adminChatIds.includes(source.roomId));
+}
 function bookingTimeLimitDisabled() {
   return ['1', 'true', 'yes', 'ใช่'].includes(String(process.env.DISABLE_BOOKING_TIME_LIMIT ?? '').trim().toLowerCase());
 }
@@ -1332,7 +1337,7 @@ async function typedBookingModeMessage(userId, text, source = null) {
 async function handleEvent(event) {
   if (!event.replyToken) return;
   if (!botEnabled()) return;
-  if (event.source?.groupId || event.source?.roomId) return;
+  if (isAdminChat(event.source)) return;
   const userId = event.source.userId;
 
   if (event.type === 'message' && event.message.type === 'text') {
