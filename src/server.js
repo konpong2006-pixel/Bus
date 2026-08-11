@@ -1406,7 +1406,11 @@ app.post('/api/liff/bookings', async (req, res) => {
         console.error(pushError);
       }
     }
-    await pushAdminText(liffBookingText(booking));
+    try {
+      await pushAdminText(liffBookingText(booking));
+    } catch (adminPushError) {
+      console.error(adminPushError);
+    }
     res.json({
       ok: true,
       booking,
