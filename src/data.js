@@ -36,7 +36,27 @@ function columnIndex(headers, names, fallback) {
 }
 
 function normalizePlace(value) {
-  return String(value ?? '').replace(/\s+/g, '').replace(/\./g, '').trim();
+  const normalized = String(value ?? '').replace(/\s+/g, '').replace(/\./g, '').trim();
+  const aliases = new Map([
+    ['กม79', 'กม79'],
+    ['กม10', 'กม10'],
+    ['กม๑๐', 'กม10'],
+    ['มาบตะพุด', 'มาบตาพุด'],
+    ['กบินบุรี', 'กบินทร์บุรี'],
+    ['เขาหินซ้อน', 'ตลาดเขาหินซ้อน'],
+    ['เนินหิน', 'เนินโมก'],
+    ['เฉลิมไทย', 'แยกเฉลิมไทย'],
+    ['ดอนหัวฬ่อ', 'แยกดอนหัวฬ่อ'],
+    ['วัดหนองตำลึง', 'หน้าวัดหนองตำลึง'],
+    ['พนัสนิคม', 'แยกพนัสนิคม'],
+    ['แปดริ้ว', 'บขสแปดริ้วฉะเชิงเทรา'],
+    ['ฉะเชิงเทรา', 'บขสแปดริ้วฉะเชิงเทรา'],
+    ['บขสแปดริ้ว', 'บขสแปดริ้วฉะเชิงเทรา'],
+    ['พนมสารคาม', 'บขสพนมสารคาม'],
+    ['ชลบุรี', 'บขสชลบุรี'],
+    ['บขสชลบุรี', 'บขสชลบุรี']
+  ]);
+  return aliases.get(normalized) ?? normalized;
 }
 
 function parseNumber(value) {
@@ -310,7 +330,9 @@ export async function pickupStops() {
   for (const route of routes) {
     for (const stop of route.stops.slice(0, -1)) seen.set(stop.id, stop.name);
   }
-  for (const fare of fares) seen.set(fare.pickupId, fare.pickupName);
+  for (const fare of fares) {
+    if (!seen.has(fare.pickupId)) seen.set(fare.pickupId, fare.pickupName);
+  }
   return [...seen].map(([id, name]) => ({ id, name }));
 }
 
@@ -322,7 +344,9 @@ export async function dropoffStops(pickupId) {
     if (pickupIndex < 0) continue;
     for (const stop of route.stops.slice(pickupIndex + 1)) seen.set(stop.id, stop.name);
   }
-  for (const fare of fares.filter((item) => item.pickupId === pickupId)) seen.set(fare.dropoffId, fare.dropoffName);
+  for (const fare of fares.filter((item) => item.pickupId === pickupId)) {
+    if (!seen.has(fare.dropoffId)) seen.set(fare.dropoffId, fare.dropoffName);
+  }
   return [...seen].map(([id, name]) => ({ id, name }));
 }
 
