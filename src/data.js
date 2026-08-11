@@ -328,7 +328,7 @@ export async function pickupStops() {
   const { fares, routes } = await busData();
   const seen = new Map();
   for (const route of routes) {
-    for (const stop of route.stops.slice(0, -1)) seen.set(stop.id, stop.name);
+    for (const stop of route.stops) seen.set(stop.id, stop.name);
   }
   for (const fare of fares) {
     if (!seen.has(fare.pickupId)) seen.set(fare.pickupId, fare.pickupName);

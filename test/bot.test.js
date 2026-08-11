@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fareForJourney, hasSchedulesOnDate, routesForJourney, schedulesFor } from '../src/data.js';
+import { dropoffStops, fareForJourney, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from '../src/data.js';
 import { addMinutes, bangkokHour } from '../src/time.js';
 
 test('finds the forward route when pickup precedes dropoff', async () => {
@@ -28,6 +28,18 @@ test('allows short-distance bookings on route at 250 baht', async () => {
   assert.equal(await fareForJourney('KOR-RY', 'bo-win', 'rayong'), 250);
   assert.deepEqual((await routesForJourney('map-ta-phut', 'ban-chang')).map((route) => route.id), ['RY-KOR']);
   assert.equal(await fareForJourney('RY-KOR', 'map-ta-phut', 'ban-chang'), 250);
+});
+
+test('offers every route stop as a pickup and dropoff in the valid direction', async () => {
+  const pickups = (await pickupStops()).map((stop) => stop.id);
+  assert.equal(pickups.includes('korat'), true);
+  assert.equal(pickups.includes('rayong'), true);
+  assert.equal(pickups.includes('chonburi-terminal'), true);
+
+  const kabinDropoffs = (await dropoffStops('kabin')).map((stop) => stop.id);
+  assert.equal(kabinDropoffs.includes('korat'), true);
+  assert.equal(kabinDropoffs.includes('rayong'), true);
+  assert.equal(kabinDropoffs.includes('chonburi-terminal'), true);
 });
 
 test('uses daily default schedules when no date-specific schedule exists', async () => {
