@@ -753,6 +753,8 @@ async function dateButtons(action = 'date') {
 }
 
 function liffBookingUrl() {
+  const liffId = String(process.env.LIFF_ID || '').trim();
+  if (liffId) return `https://liff.line.me/${liffId}`;
   const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '');
   return baseUrl ? `${baseUrl}/liff` : 'https://bus-test-wsena.onrender.com/liff';
 }
@@ -853,6 +855,22 @@ function bookingModePrompt() {
   ]);
 }
 
+function webBookingOnlyPrompt() {
+  return quick(`🤖 นี่คือระบบตอบข้อความอัตโนมัตินะคะ
+
+ตอนนี้การจองตั๋วอัตโนมัติจะทำผ่านเมนูจองตั๋วเท่านั้นค่ะ
+เพื่อให้เลือกวันที่ จุดขึ้น จุดลง รอบรถ และกรอกข้อมูลได้ถูกต้องกว่าในแชท
+
+ℹ️ ระบบรับจองเฉพาะการเดินทางไกลตามสายรถเท่านั้นค่ะ
+⚠️ ไม่รับจองระยะใกล้ เช่น บ่อวินไประยอง
+⏰ รับจองอัตโนมัติ 07.00-22.00 น.
+
+กรุณากดปุ่ม "จองผ่านเว็บ" หรือกด Rich Menu ด้านล่างได้เลยค่ะ`, [
+    uriButton('จองผ่านเว็บ', liffBookingUrl()),
+    button('ติดต่อแอดมิน', 'action=contact_admin')
+  ]);
+}
+
 async function start(userId) {
   state.set(userId, {});
   return [
@@ -860,7 +878,7 @@ async function start(userId) {
       type: 'text',
       text: 'สวัสดีค่ะ ยินดีต้อนรับสู่บัญชีทางการของรถร่วมวิศวกรเสนา\n\nระบบนี้เป็นระบบอัตโนมัติสำหรับตรวจสอบรอบรถโดยสาร สาย 267 โคราช-ระยอง และสาย 265 โคราช-ชลบุรี\n\nสามารถตรวจสอบเวลารถถึงจุดขึ้นและจุดลงโดยประมาณได้จากเมนูด้านล่าง\n\nหากต้องการจองที่นั่ง สอบถามเพิ่มเติม หรือให้แอดมินดูแลจนได้เดินทาง กรุณาทักแชทแอดมิน หรือโทร 092-774-4341\n\nเปิดรับจองและตอบแชทเวลา 07.00-21.00 น.\n\nกรณีทักไลน์ตอบล่าช้า\nสามารถโทรได้ที่👇\n☎️092-774-4341🥰'
     },
-    bookingModePrompt()
+    webBookingOnlyPrompt()
   ];
 }
 
@@ -1267,18 +1285,17 @@ async function handleEvent(event) {
   if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId, event.source)) return;
   if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId, event.source)) setState(userId, { afterHoursNoticeSent: false });
   let message;
-  if (!isBookingOpenFor(userId, event.source)) message = closeBookingAfterHours(userId);
-  else if (event.type === 'follow') message = await start(userId);
+  if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    if (userState(userId).handoffToAdmin && !shouldResumeFromHandoff(event.message.text)) return;
-    if (userState(userId).handoffToAdmin && shouldResumeFromHandoff(event.message.text)) {
-      const value = cleanCustomerText(event.message.text);
-      state.set(userId, {});
-      if (wantsScheduleCheck(value)) message = await askScheduleDate(userId);
-      else message = /จอง/.test(value) ? bookingModePrompt() : await start(userId);
+    if (userState(userId).handoffToAdmin) return;
+    const value = cleanCustomerText(event.message.text);
+    if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
+      message = handoffToAdmin(userId, event.source);
+    } else if (!userState(userId).chatGuideSent || shouldResumeFromHandoff(event.message.text)) {
+      setState(userId, { chatGuideSent: true, booking: null, flowStep: null });
+      message = webBookingOnlyPrompt();
     } else {
-      message = await typedBookingModeMessage(userId, event.message.text, event.source)
-        ?? await dateMessage(userId, event.message.text, event.source);
+      return;
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
     if (userState(userId).handoffToAdmin) return;
@@ -1286,23 +1303,15 @@ async function handleEvent(event) {
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
-    if (action === 'restart') message = await start(userId);
-    if (action === 'start_booking') message = bookingModePrompt();
-    if (action === 'check_schedule') message = await askScheduleDate(userId);
-    if (action === 'check_date') message = await scheduleSummaryForDate(userId, params.get('value'));
-    if (action === 'auto_booking') message = await askBookingDate(userId, event.source);
-    if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId, event.source);
-    if (action === 'date') {
-      setState(userId, { date: params.get('value'), flowStep: 'pickup' });
-      message = await pickupChoices(userId);
+    if (action === 'restart' || action === 'start_booking' || action === 'check_schedule' || action === 'check_date' || action === 'auto_booking') {
+      message = webBookingOnlyPrompt();
     }
-    if (action === 'pickup_page') message = await pickupChoices(userId, params.get('page'));
-    if (action === 'pickup') { setState(userId, { pickupId: params.get('value'), flowStep: 'dropoff' }); message = await dropoffChoices(userId); }
-    if (action === 'dropoff_page') message = await dropoffChoices(userId, params.get('page'));
-    if (action === 'dropoff') { setState(userId, { dropoffId: params.get('value'), flowStep: 'schedule' }); message = await scheduleChoices(userId); }
-    if (action === 'schedule') { setState(userId, { flowStep: 'result' }); message = await result(userId, params.get('route'), params.get('time')); }
+    if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId, event.source);
+    if (action === 'date' || action === 'pickup_page' || action === 'pickup' || action === 'dropoff_page' || action === 'dropoff' || action === 'schedule') {
+      message = webBookingOnlyPrompt();
+    }
   }
-  if (!message) message = fallbackMessage();
+  if (!message) return;
   await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
     body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(message) ? message : [message] })
