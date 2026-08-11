@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
+import QRCode from 'qrcode';
 import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, getRoutes, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
@@ -15,6 +16,7 @@ const state = new Map();
 const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
+const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130650016A000000677010112011501075360001028602150140000095541220303SCB5802TH53037646220071600000000014206306304931B';
 app.use(express.static('public'));
 app.use('/api/liff', express.json({ limit: '2mb' }));
 
@@ -916,9 +918,73 @@ function withPaymentQr(message) {
   return qr ? [message, qr] : message;
 }
 
-function paymentQrUrl() {
+function qrPayloadTemplate() {
+  return String(process.env.PAYMENT_QR_PAYLOAD || DEFAULT_PAYMENT_QR_PAYLOAD).trim();
+}
+
+function parseEmvPayload(payload) {
+  const tags = [];
+  let index = 0;
+  while (index + 4 <= payload.length) {
+    const id = payload.slice(index, index + 2);
+    const length = Number(payload.slice(index + 2, index + 4));
+    if (!Number.isFinite(length) || length < 0) break;
+    const value = payload.slice(index + 4, index + 4 + length);
+    if (value.length !== length) break;
+    tags.push({ id, value });
+    index += 4 + length;
+  }
+  return tags;
+}
+
+function formatEmvTag(id, value) {
+  const text = String(value);
+  return `${id}${String(text.length).padStart(2, '0')}${text}`;
+}
+
+function crc16CcittFalse(text) {
+  let crc = 0xffff;
+  for (let i = 0; i < text.length; i += 1) {
+    crc ^= text.charCodeAt(i) << 8;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xffff;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function dynamicPaymentQrPayload(amount) {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const amountText = value.toFixed(2);
+  const sourceTags = parseEmvPayload(qrPayloadTemplate())
+    .filter((tag) => tag.id !== '54' && tag.id !== '63')
+    .map((tag) => (tag.id === '01' ? { ...tag, value: '12' } : tag));
+  const amountTag = { id: '54', value: amountText };
+  const tagById = new Map(sourceTags.map((tag) => [tag.id, tag]));
+  const preferredOrder = ['00', '01', '30', '52', '53', '54', '58', '59', '60', '62'];
+  tagById.set('54', amountTag);
+  const used = new Set();
+  const tags = preferredOrder
+    .filter((id) => tagById.has(id))
+    .map((id) => {
+      used.add(id);
+      return tagById.get(id);
+    });
+  for (const tag of sourceTags) {
+    if (!used.has(tag.id)) tags.push(tag);
+  }
+  const withoutCrc = tags.map((tag) => formatEmvTag(tag.id, tag.value)).join('') + '6304';
+  return `${withoutCrc}${crc16CcittFalse(withoutCrc)}`;
+}
+
+function paymentQrUrl(amount = null) {
   const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '');
-  return baseUrl ? `${baseUrl}/payment-qr.png` : null;
+  if (!baseUrl) return null;
+  const value = Number(amount);
+  if (Number.isFinite(value) && value > 0) return `${baseUrl}/payment-qr-dynamic.png?amount=${encodeURIComponent(value.toFixed(2))}`;
+  return `${baseUrl}/payment-qr.png`;
 }
 
 function liffBookingText(booking) {
@@ -1319,6 +1385,24 @@ async function handleEvent(event) {
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/liff', (_req, res) => res.sendFile('index.html', { root: 'public/liff' }));
+app.get('/payment-qr-dynamic.png', async (req, res) => {
+  try {
+    const payload = dynamicPaymentQrPayload(req.query.amount);
+    if (!payload) return res.redirect('/payment-qr.png');
+    const buffer = await QRCode.toBuffer(payload, {
+      type: 'png',
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 900
+    });
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(buffer);
+  } catch (error) {
+    console.error(error);
+    return res.redirect('/payment-qr.png');
+  }
+});
 app.get('/api/liff/config', (_req, res) => {
   const liffId = process.env.LIFF_ID || '';
   res.json({
@@ -1399,7 +1483,7 @@ app.post('/api/liff/bookings', async (req, res) => {
         type: 'text',
         text: `กรุณาตรวจสอบรายการจองค่ะ ✅\n\n${bookingSummary(booking)}\n\n📎 หลังโอนเสร็จ กรุณาส่งรูปสลิปในแชทนี้ค่ะ`
       };
-      const qrUrl = paymentQrUrl();
+      const qrUrl = paymentQrUrl(lockedPaymentAmount(booking));
       try {
         lineMessageSent = await pushLineMessages(lineUserId, [summaryMessage]);
         if (qrUrl) {
@@ -1422,7 +1506,7 @@ app.post('/api/liff/bookings', async (req, res) => {
       ok: true,
       booking,
       summary: bookingSummary(booking),
-      paymentQrUrl: paymentQrUrl(),
+      paymentQrUrl: paymentQrUrl(lockedPaymentAmount(booking)),
       lineMessageSent
     });
   } catch (error) {
