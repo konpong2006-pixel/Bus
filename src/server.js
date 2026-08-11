@@ -996,11 +996,21 @@ async function downloadLineContent(messageId) {
 async function pushAdminText(text) {
   const to = process.env.ADMIN_LINE_TARGET_ID || process.env.ADMIN_LINE_GROUP_ID || process.env.ADMIN_LINE_USER_ID;
   if (!to) return;
-  await fetch('https://api.line.me/v2/bot/message/push', {
+  await pushLineMessages(to, [{ type: 'text', text }]);
+}
+
+async function pushLineMessages(to, messages) {
+  if (!to || !Array.isArray(messages) || messages.length === 0) return false;
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
-    body: JSON.stringify({ to, messages: [{ type: 'text', text }] })
+    body: JSON.stringify({ to, messages })
   });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`LINE push failed: ${response.status} ${body}`);
+  }
+  return true;
 }
 
 function slipOkErrorText(result) {
@@ -1371,19 +1381,38 @@ app.post('/api/liff/bookings', async (req, res) => {
     if (!isBookingOpen()) return apiError(res, 403, 'ขณะนี้ปิดรับการจองอัตโนมัติแล้ว กรุณาเริ่มจองใหม่เวลา 07.00-22.00 น.');
     const booking = await liffBookingFromPayload(req.body);
     const lineUserId = String(req.body?.lineUserId || '').trim();
+    let lineMessageSent = false;
     if (lineUserId) {
       setState(lineUserId, {
         booking: { ...booking, step: 'awaiting_slip' },
         handoffToAdmin: false,
         flowStep: null
       });
+      const summaryMessage = {
+        type: 'text',
+        text: `กรุณาตรวจสอบรายการจองค่ะ ✅\n\n${bookingSummary(booking)}\n\n📎 หลังโอนเสร็จ กรุณาส่งรูปสลิปในแชทนี้ค่ะ`
+      };
+      const qrUrl = paymentQrUrl();
+      try {
+        lineMessageSent = await pushLineMessages(lineUserId, [summaryMessage]);
+        if (qrUrl) {
+          await pushLineMessages(lineUserId, [{
+            type: 'image',
+            originalContentUrl: qrUrl,
+            previewImageUrl: qrUrl
+          }]).catch((pushQrError) => console.error(pushQrError));
+        }
+      } catch (pushError) {
+        console.error(pushError);
+      }
     }
     await pushAdminText(liffBookingText(booking));
     res.json({
       ok: true,
       booking,
       summary: bookingSummary(booking),
-      paymentQrUrl: paymentQrUrl()
+      paymentQrUrl: paymentQrUrl(),
+      lineMessageSent
     });
   } catch (error) {
     console.error(error);

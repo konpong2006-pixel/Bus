@@ -753,6 +753,13 @@
       }
     }
 
+    function closeLiffAfterSubmit() {
+      if (!state.liffReady || !liff.isInClient()) return false;
+      setStatus('ส่งรายการเข้า LINE แล้ว กำลังกลับไปหน้าแชทค่ะ...', false);
+      setTimeout(() => liff.closeWindow(), 250);
+      return true;
+    }
+
     function showWebResult(data) {
       els.form.style.display = 'none';
       document.querySelector('.progress-card').style.display = 'none';
@@ -840,8 +847,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+        if (data.lineMessageSent && closeLiffAfterSubmit()) return;
         const sentToLine = await sendBookingToLine(data);
-        if (!sentToLine) showWebResult(data);
+        if (!sentToLine) {
+          setStatus('ส่งรายการจองให้ระบบแล้วค่ะ กรุณากลับไปที่แชท LINE เพื่อรอข้อความจากบอทนะคะ', false);
+        }
       } catch (error) {
         setStatus(error.message);
       } finally {
