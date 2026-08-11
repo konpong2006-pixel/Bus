@@ -1332,6 +1332,7 @@ async function typedBookingModeMessage(userId, text, source = null) {
 async function handleEvent(event) {
   if (!event.replyToken) return;
   if (!botEnabled()) return;
+  if (event.source?.groupId || event.source?.roomId) return;
   const userId = event.source.userId;
 
   if (event.type === 'message' && event.message.type === 'text') {
