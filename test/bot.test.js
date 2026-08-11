@@ -23,6 +23,13 @@ test('locks Rayong outbound fares by destination zone', async () => {
   assert.equal(await fareForJourney('RY-KOR', 'rayong', 'kabin'), 250);
 });
 
+test('allows short-distance bookings on route at 250 baht', async () => {
+  assert.deepEqual((await routesForJourney('bo-win', 'rayong')).map((route) => route.id), ['KOR-RY']);
+  assert.equal(await fareForJourney('KOR-RY', 'bo-win', 'rayong'), 250);
+  assert.deepEqual((await routesForJourney('map-ta-phut', 'ban-chang')).map((route) => route.id), ['RY-KOR']);
+  assert.equal(await fareForJourney('RY-KOR', 'map-ta-phut', 'ban-chang'), 250);
+});
+
 test('uses daily default schedules when no date-specific schedule exists', async () => {
   assert.deepEqual((await schedulesFor('RY-KOR', '2026-07-21')).map((item) => item.departureTime), ['04:00', '06:00', '10:00']);
 });

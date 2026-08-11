@@ -61,6 +61,20 @@ function uniqueSchedules(schedules) {
   return [...new Map(schedules.map((schedule) => [schedule.id, schedule])).values()];
 }
 
+function localRoutesById() {
+  return new Map(readJson('routes.json').routes.map((route) => [route.id, route]));
+}
+
+function routeStopIndex(route, stopId) {
+  return route.stops.findIndex((stop) => stop.id === stopId);
+}
+
+function routeAllowsJourney(route, pickupId, dropoffId) {
+  const pickupIndex = routeStopIndex(route, pickupId);
+  const dropoffIndex = routeStopIndex(route, dropoffId);
+  return pickupIndex >= 0 && dropoffIndex >= 0 && dropoffIndex > pickupIndex;
+}
+
 function busPhoneMap(rows) {
   const phonesByBus = new Map();
   for (const row of rows) {
@@ -124,6 +138,7 @@ function fallbackData() {
 async function loadSheetData() {
   const routeRows = await sheetRows('รายการเส้นทาง', 'A3:D200');
   if (!routeRows) return fallbackData();
+  const localRoutes = localRoutesById();
 
   const routeDefs = routeRows
     .filter((row) => row[0] && row[1])
@@ -155,10 +170,17 @@ async function loadSheetData() {
   const fares = fareGroups.flat();
 
   const routes = routeDefs.map((route) => {
+    const localStops = localRoutes.get(route.id)?.stops ?? [];
     const routeFares = fares.filter((fare) => fare.routeId === route.id);
     const stops = [];
     const seen = new Set();
-    for (const name of [route.origin, ...routeFares.map((fare) => fare.pickupName), ...routeFares.map((fare) => fare.dropoffName), route.destination]) {
+    for (const name of [
+      route.origin,
+      ...localStops.map((stop) => stop.name),
+      ...routeFares.map((fare) => fare.pickupName),
+      ...routeFares.map((fare) => fare.dropoffName),
+      route.destination
+    ]) {
       const id = normalizePlace(name);
       if (!id || seen.has(id)) continue;
       seen.add(id);
@@ -243,7 +265,7 @@ export async function routesForJourney(pickupId, dropoffId) {
   const routeIds = new Set(fares
     .filter((fare) => fare.pickupId === pickupId && fare.dropoffId === dropoffId && fare.active)
     .map((fare) => fare.routeId));
-  return routes.filter((route) => routeIds.has(route.id));
+  return routes.filter((route) => routeIds.has(route.id) || routeAllowsJourney(route, pickupId, dropoffId));
 }
 
 export async function schedulesFor(routeId, date) {
@@ -275,20 +297,31 @@ export async function availableScheduleDates(limit = 11) {
 }
 
 export async function fareForJourney(routeId, pickupId, dropoffId) {
-  const { fares } = await busData();
-  return fares.find((fare) => fare.routeId === routeId && fare.pickupId === pickupId && fare.dropoffId === dropoffId)?.price ?? null;
+  const { fares, routes } = await busData();
+  const fare = fares.find((item) => item.routeId === routeId && item.pickupId === pickupId && item.dropoffId === dropoffId);
+  if (fare?.price != null) return fare.price;
+  const route = routes.find((item) => item.id === routeId);
+  return route && routeAllowsJourney(route, pickupId, dropoffId) ? 250 : null;
 }
 
 export async function pickupStops() {
-  const { fares } = await busData();
+  const { fares, routes } = await busData();
   const seen = new Map();
+  for (const route of routes) {
+    for (const stop of route.stops.slice(0, -1)) seen.set(stop.id, stop.name);
+  }
   for (const fare of fares) seen.set(fare.pickupId, fare.pickupName);
   return [...seen].map(([id, name]) => ({ id, name }));
 }
 
 export async function dropoffStops(pickupId) {
-  const { fares } = await busData();
+  const { fares, routes } = await busData();
   const seen = new Map();
+  for (const route of routes) {
+    const pickupIndex = routeStopIndex(route, pickupId);
+    if (pickupIndex < 0) continue;
+    for (const stop of route.stops.slice(pickupIndex + 1)) seen.set(stop.id, stop.name);
+  }
   for (const fare of fares.filter((item) => item.pickupId === pickupId)) seen.set(fare.dropoffId, fare.dropoffName);
   return [...seen].map(([id, name]) => ({ id, name }));
 }
