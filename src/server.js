@@ -1,7 +1,10 @@
 import 'dotenv/config';
+import { readFileSync } from 'fs';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
+import opentype from 'opentype.js';
 import QRCode from 'qrcode';
+import sharp from 'sharp';
 import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, getRoutes, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
@@ -17,6 +20,16 @@ const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
 const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130650016A000000677010112011501075360001028602150140000095541220303SCB5802TH53037646220071600000000014206306304931B';
+const thaiFontBuffer = readFileSync(new URL('../node_modules/@fontsource/noto-sans-thai/files/noto-sans-thai-thai-700-normal.woff', import.meta.url));
+const THAI_FONT = opentype.parse(thaiFontBuffer.buffer.slice(
+  thaiFontBuffer.byteOffset,
+  thaiFontBuffer.byteOffset + thaiFontBuffer.byteLength
+));
+const latinFontBuffer = readFileSync(new URL('../node_modules/@fontsource/noto-sans-thai/files/noto-sans-thai-latin-700-normal.woff', import.meta.url));
+const LATIN_FONT = opentype.parse(latinFontBuffer.buffer.slice(
+  latinFontBuffer.byteOffset,
+  latinFontBuffer.byteOffset + latinFontBuffer.byteLength
+));
 app.use(express.static('public'));
 app.use('/api/liff', express.json({ limit: '2mb' }));
 
@@ -959,6 +972,31 @@ function crc16CcittFalse(text) {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
 
+function svgText(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function svgTextPath(text, { x, y, size, fill }) {
+  const path = new opentype.Path();
+  let cursorX = 0;
+
+  for (const char of Array.from(String(text ?? ''))) {
+    const font = char.charCodeAt(0) <= 0x7f ? LATIN_FONT : THAI_FONT;
+    const glyph = font.charToGlyph(char);
+    const glyphPath = glyph.getPath(cursorX, 0, size);
+    path.commands.push(...glyphPath.commands);
+    cursorX += ((glyph.advanceWidth || 0) / font.unitsPerEm) * size;
+  }
+
+  const box = path.getBoundingBox();
+  const dx = x - ((box.x2 - box.x1) / 2) - box.x1;
+  return `<path d="${path.toPathData(2)}" transform="translate(${dx.toFixed(2)} ${y})" fill="${fill}"/>`;
+}
+
 function dynamicPaymentQrPayload(amount) {
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0) return null;
@@ -982,6 +1020,45 @@ function dynamicPaymentQrPayload(amount) {
   }
   const withoutCrc = tags.map((tag) => formatEmvTag(tag.id, tag.value)).join('') + '6304';
   return `${withoutCrc}${crc16CcittFalse(withoutCrc)}`;
+}
+
+async function decoratedPaymentQrBuffer(amount, payload) {
+  const amountValue = Number(amount);
+  const amountText = amountValue.toLocaleString('th-TH', {
+    minimumFractionDigits: amountValue % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2
+  });
+  const qrDataUrl = await QRCode.toDataURL(payload, {
+    type: 'image/png',
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    width: 620
+  });
+  const svg = `
+<svg width="900" height="1300" viewBox="0 0 900 1300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f2fff6"/>
+      <stop offset="52%" stop-color="#fff8dc"/>
+      <stop offset="100%" stop-color="#e5f7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0f3d2e" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="900" height="1300" rx="44" fill="url(#bg)"/>
+  <circle cx="96" cy="105" r="58" fill="#8bd58f" opacity="0.45"/>
+  <circle cx="812" cy="110" r="78" fill="#ffd16a" opacity="0.45"/>
+  <circle cx="810" cy="1190" r="110" fill="#ffb38a" opacity="0.28"/>
+  ${svgTextPath('ช่องทางชำระเงินจองตั๋ว', { x: 450, y: 130, size: 50, fill: '#102f24' })}
+  ${svgTextPath('รถร่วมวิศวกรเสนา', { x: 450, y: 194, size: 34, fill: '#08764d' })}
+  <rect x="90" y="245" width="720" height="720" rx="34" fill="#ffffff" filter="url(#shadow)"/>
+  <image x="140" y="295" width="620" height="620" href="${qrDataUrl}"/>
+  <rect x="95" y="1005" width="710" height="150" rx="34" fill="#ffffff" stroke="#bfe6d1" stroke-width="4"/>
+  ${svgTextPath(`${svgText(amountText)} บาท`, { x: 450, y: 1116, size: 72, fill: '#078653' })}
+  ${svgTextPath('หลังโอนเสร็จ ส่งรูปสลิปในแชท LINE เดิมค่ะ', { x: 450, y: 1236, size: 28, fill: '#596d66' })}
+</svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 function paymentQrUrl(amount = null) {
@@ -1395,12 +1472,7 @@ app.get('/payment-qr-dynamic.png', async (req, res) => {
   try {
     const payload = dynamicPaymentQrPayload(req.query.amount);
     if (!payload) return res.redirect('/payment-qr.png');
-    const buffer = await QRCode.toBuffer(payload, {
-      type: 'png',
-      errorCorrectionLevel: 'M',
-      margin: 2,
-      width: 900
-    });
+    const buffer = await decoratedPaymentQrBuffer(req.query.amount, payload);
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'no-store');
     return res.send(buffer);
