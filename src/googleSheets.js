@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const APPS_SCRIPT_CACHE_MS = 60_000;
+const DEFAULT_APPS_SCRIPT_TIMEOUT_MS = 6000;
 
 let appsScriptCache = { expiresAt: 0, data: null };
 
@@ -31,6 +32,11 @@ function backendSheetId() {
 
 function appsScriptUrl() {
   return process.env.APPS_SCRIPT_URL || process.env.GOOGLE_APPS_SCRIPT_URL || process.env.SHEET_API_URL;
+}
+
+function appsScriptTimeoutMs() {
+  const value = Number(process.env.APPS_SCRIPT_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_APPS_SCRIPT_TIMEOUT_MS;
 }
 
 export function backendSheetConfigured() {
@@ -101,11 +107,21 @@ async function getAppsScriptBackendData() {
 
   const endpoint = new URL(url);
   endpoint.searchParams.set('action', 'backend');
-  const response = await fetch(endpoint);
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Apps Script read failed: ${response.status}`);
-  appsScriptCache = { expiresAt: now + APPS_SCRIPT_CACHE_MS, data: result };
-  return result;
+  const timeoutMs = appsScriptTimeoutMs();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(endpoint, { signal: controller.signal });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Apps Script read failed: ${response.status}`);
+    appsScriptCache = { expiresAt: now + APPS_SCRIPT_CACHE_MS, data: result };
+    return result;
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error(`Apps Script read timed out after ${timeoutMs}ms`);
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function getBackendSheetValues(tabName, rangeA1) {
