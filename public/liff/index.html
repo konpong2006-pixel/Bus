@@ -853,7 +853,7 @@
         const config = await api('/api/liff/config');
         state.paymentQrUrl = config.paymentQrUrl || '';
         await initLiff(config.liffId);
-        if (!config.bookingOpen) {
+        if (!config.bookingOpenByTime) {
           showBookingClosedModal();
           setStatus('⏰ ขณะนี้อยู่นอกเวลารับจองอัตโนมัติ 07.00-22.00 น. 🌅 กรุณารอเริ่มจองใหม่ตอนเช้าค่ะ ☎️ หากเร่งด่วนมาก โทร 092-774-4341 ได้ค่ะ ⚠️ แต่อาจไม่สะดวกรับสายในช่วงนอกเวลาทำการ');
         }

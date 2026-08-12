@@ -946,6 +946,10 @@ function adminContact() {
 
 function isBookingOpen() {
   if (bookingTimeLimitDisabled()) return true;
+  return isBookingOpenByTime();
+}
+
+function isBookingOpenByTime() {
   const hour = bangkokHour();
   return hour >= BOOKING_OPEN_HOUR && hour < BOOKING_CLOSE_HOUR;
 }
@@ -1535,6 +1539,7 @@ app.get('/api/liff/config', (_req, res) => {
     liffId,
     liffUrl: liffId ? `https://liff.line.me/${liffId}` : '',
     bookingOpen: isBookingOpen(),
+    bookingOpenByTime: isBookingOpenByTime(),
     paymentQrUrl: paymentQrUrl()
   });
 });
