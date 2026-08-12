@@ -46,6 +46,9 @@ function envList(...keys) {
 }
 function userState(userId) { return state.get(userId) ?? {}; }
 function setState(userId, patch) { state.set(userId, { ...userState(userId), ...patch }); }
+function shouldSendDailyGuide(userId) {
+  return userState(userId).chatGuideSentDate !== bangkokDate();
+}
 function closeBookingAfterHours(userId) {
   setState(userId, { afterHoursNoticeSent: true, handoffToAdmin: false, booking: null });
   return afterHoursBooking();
@@ -1438,8 +1441,8 @@ async function handleEvent(event) {
     const value = cleanCustomerText(event.message.text);
     if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
       message = handoffToAdmin(userId, event.source);
-    } else if (!userState(userId).chatGuideSent || shouldResumeFromHandoff(event.message.text)) {
-      setState(userId, { chatGuideSent: true, booking: null, flowStep: null });
+    } else if (shouldSendDailyGuide(userId) || shouldResumeFromHandoff(event.message.text)) {
+      setState(userId, { chatGuideSent: true, chatGuideSentDate: bangkokDate(), booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
     } else {
       return;
