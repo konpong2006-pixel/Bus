@@ -1440,6 +1440,8 @@ async function handleEvent(event) {
     const value = cleanCustomerText(event.message.text);
     if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
       message = handoffToAdmin(userId, event.source);
+    } else if (wantsScheduleCheck(event.message.text)) {
+      message = await dateMessage(userId, event.message.text, event.source);
     } else if (shouldSendDailyGuide(userId) || shouldResumeFromHandoff(event.message.text)) {
       setState(userId, { chatGuideSent: true, chatGuideSentDate: bangkokDate(), booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
@@ -1452,7 +1454,14 @@ async function handleEvent(event) {
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
-    if (action === 'restart' || action === 'start_booking' || action === 'check_schedule' || action === 'check_date' || action === 'auto_booking') {
+    if (action === 'check_schedule') {
+      message = await askScheduleDate(userId);
+    }
+    if (action === 'check_date') {
+      const date = params.get('value');
+      message = date ? await scheduleSummaryForDate(userId, date) : await askScheduleDate(userId);
+    }
+    if (action === 'restart' || action === 'start_booking' || action === 'auto_booking') {
       message = webBookingOnlyPrompt();
     }
     if (action === 'advance_booking' || action === 'contact_admin') message = handoffToAdmin(userId, event.source);
