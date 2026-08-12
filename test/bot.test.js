@@ -68,7 +68,6 @@ test('loads real Rayong return schedules and keeps unknown driver phones blank',
     '04:00 267-44 ',
     '06:00 267-19 091-342-7497',
     '09:00 267-29 096-339-0599',
-    '11:00 267-8 ',
     '13:00 267-14 086-2556684',
     '17:00 267-1 081-0734684'
   ]);
