@@ -436,7 +436,7 @@
       <section class="step-panel" data-step="1">
         <p class="step-kicker">📍 ขั้นที่ 2</p>
         <h2 class="step-title">เลือกจุดขึ้นหลัก</h2>
-        <p class="step-help">ถ้าขึ้นกลางทาง ให้เลือกจุดหลักที่ตรงกับระบบก่อน แล้วค่อยกรอกจุดขึ้นพิเศษภายหลังค่ะ</p>
+        <p class="step-help">เลือกจุดขึ้นที่ต้องการจากรายการด้านล่างค่ะ</p>
         <div class="choice-grid" id="pickupChoices"></div>
       </section>
 
@@ -457,7 +457,7 @@
       <section class="step-panel" data-step="4">
         <p class="step-kicker">👤 ขั้นที่ 5</p>
         <h2 class="step-title">กรอกข้อมูลผู้จอง</h2>
-        <p class="step-help">กรอกชื่อ เบอร์โทร จำนวนที่นั่ง และจุดขึ้นพิเศษ ถ้าขึ้นที่ บขส ให้พิมพ์ “บขส” หรือ “-” ค่ะ</p>
+        <p class="step-help">กรอกชื่อ เบอร์โทร และจำนวนที่นั่งค่ะ</p>
         <div class="field">
           <label for="customerName">👤 ชื่อผู้จอง</label>
           <input id="customerName" autocomplete="name" placeholder="เช่น คุณกมลพร" required>
@@ -471,10 +471,6 @@
         <div class="field">
           <label for="seats">🎟️ จำนวนที่นั่ง</label>
           <input id="seats" inputmode="numeric" autocomplete="off" value="1" required>
-        </div>
-        <div class="field">
-          <label for="pickupSpecial">📌 จุดขึ้นพิเศษ</label>
-          <input id="pickupSpecial" autocomplete="off" placeholder="หน้าบิ๊กซี / สะพานลอย / บขส / -">
         </div>
       </section>
 
@@ -521,7 +517,6 @@
       customerName: document.querySelector('#customerName'),
       phone: document.querySelector('#phone'),
       seats: document.querySelector('#seats'),
-      pickupSpecial: document.querySelector('#pickupSpecial'),
       reviewBox: document.querySelector('#reviewBox'),
       priceText: document.querySelector('#priceText'),
       status: document.querySelector('#status'),
@@ -669,8 +664,7 @@
         `⏰ รอบ: ${state.schedule ? `${state.schedule.origin} ${state.schedule.departureTime} น.` : '-'}`,
         `🎟️ จำนวนที่นั่ง: ${seats()} ที่นั่ง`,
         `👤 ชื่อผู้จอง: ${els.customerName.value.trim() || '-'}`,
-        `📞 เบอร์โทร: ${els.phone.value.trim() || '-'}`,
-        `📌 จุดขึ้นพิเศษ: ${els.pickupSpecial.value.trim() || '-'}`
+        `📞 เบอร์โทร: ${els.phone.value.trim() || '-'}`
       ];
       els.reviewBox.textContent = lines.join('\n');
       const price = totalPrice();
@@ -837,7 +831,6 @@
           routeId: state.schedule.routeId,
           departureTime: state.schedule.departureTime,
           seats: seats(),
-          pickupSpecial: els.pickupSpecial.value,
           customerName: els.customerName.value,
           phone: phoneDigits(),
           lineUserId: await currentLineUserId()
@@ -881,7 +874,7 @@
         showStep(target);
       });
     });
-    [els.customerName, els.phone, els.seats, els.pickupSpecial].forEach((input) => {
+    [els.customerName, els.phone, els.seats].forEach((input) => {
       input.addEventListener('input', updateReview);
     });
     els.close.addEventListener('click', () => {

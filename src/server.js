@@ -462,7 +462,6 @@ function bookingSummary(booking) {
 🏁 ปลายทาง: ${booking.destinationProvince}
 ⏰ รอบ: ${booking.departureTime}
 📍 จุดขึ้น: ${booking.pickupPoint}
-📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
 🎟️ จำนวน: ${booking.seats} ที่นั่ง
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์: ${booking.phone || '-'}
@@ -481,7 +480,6 @@ function adminBookingText(booking, paidText = '') {
 🏁 จังหวัดปลายทาง: ${booking.destinationProvince}
 ⏰ เวลา: ${booking.departureTime}
 📍 จุดขึ้น: ${booking.pickupPoint}
-📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
 
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์โทร: ${booking.phone || '-'}
@@ -500,7 +498,7 @@ function customerTicketText(booking, paidText = '') {
   return `🎫 ตั๋วโดยสาร
 
 📅 วันที่: ${thaiDate(booking.date)}
-📍 จุดขึ้น: ${booking.pickupSpecial || booking.pickupPoint}
+📍 จุดขึ้น: ${booking.pickupPoint}
 ⏰ เวลา: ${booking.departureTime}
 🏁 จุดลง: ${booking.dropoffPoint || booking.destinationProvince}
 
@@ -1080,7 +1078,6 @@ function liffBookingText(booking) {
 🏁 จังหวัดปลายทาง: ${booking.destinationProvince}
 ⏰ รอบ: ${booking.departureTime}
 📍 จุดขึ้น: ${booking.pickupPoint}
-📌 จุดขึ้นพิเศษ: ${booking.pickupSpecial || '-'}
 
 👤 ผู้จอง: ${booking.customerName}
 📞 เบอร์โทร: ${booking.phone || '-'}
@@ -1104,7 +1101,6 @@ async function liffBookingFromPayload(payload) {
   const seats = parseSeats(String(payload?.seats || ''));
   const customerName = String(payload?.customerName || '').trim();
   const phone = String(payload?.phone || '').trim();
-  const pickupSpecial = String(payload?.pickupSpecial || '').trim();
 
   if (!date || !(await hasSchedulesOnDate(date))) throw new Error('วันที่นี้ยังไม่มีรอบรถในระบบ');
   if (!pickupId || !dropoffId) throw new Error('กรุณาเลือกจุดขึ้นและจุดลง');
@@ -1131,7 +1127,7 @@ async function liffBookingFromPayload(payload) {
     departureTime,
     pickupPoint: pickup.name,
     dropoffPoint: dropoff.name,
-    pickupSpecial: normalizePickupSpecial(pickupSpecial || '-', pickup.name),
+    pickupSpecial: '',
     routeId,
     pickupId,
     dropoffId,
