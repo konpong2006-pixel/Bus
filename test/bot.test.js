@@ -65,7 +65,7 @@ test('loads real Korat outbound schedules with bus and driver phones', async () 
 
 test('loads real Rayong return schedules and keeps unknown driver phones blank', async () => {
   assert.deepEqual((await schedulesFor('RY-KOR', '2026-08-13')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
-    '04:00 267-44 ',
+    '04:00 267-44 0982713730',
     '06:00 267-19 091-342-7497',
     '09:00 267-29 096-339-0599',
     '13:00 267-14 086-2556684',
