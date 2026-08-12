@@ -155,7 +155,7 @@ function normaliseThaiDigits(text) {
 function yearFromInput(value, fallback) {
   if (!value) return fallback;
   let year = Number(value);
-  if (year < 100) year += 2000;
+  if (year < 100) year += year >= 50 ? 2500 : 2000;
   if (year > 2400) year -= 543;
   return year;
 }
@@ -173,6 +173,54 @@ function relativeDate(days) {
   const date = new Date(`${bangkokDate()}T12:00:00+07:00`);
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+const THAI_MONTH_ALIASES = [
+  { month: 1, names: ['มกราคม', 'มกรา', 'ม.ค.', 'มค', 'jan', 'january'] },
+  { month: 2, names: ['กุมภาพันธ์', 'กุมภา', 'ก.พ.', 'กพ', 'feb', 'february'] },
+  { month: 3, names: ['มีนาคม', 'มีนา', 'มี.ค.', 'มีค', 'mar', 'march'] },
+  { month: 4, names: ['เมษายน', 'เมษา', 'เม.ย.', 'เมย', 'apr', 'april'] },
+  { month: 5, names: ['พฤษภาคม', 'พฤษภา', 'พ.ค.', 'พค', 'may'] },
+  { month: 6, names: ['มิถุนายน', 'มิถุนา', 'มิ.ย.', 'มิย', 'jun', 'june'] },
+  { month: 7, names: ['กรกฎาคม', 'กรกฎา', 'ก.ค.', 'กค', 'jul', 'july'] },
+  { month: 8, names: ['สิงหาคม', 'สิงหา', 'ส.ค.', 'สค', 'aug', 'august'] },
+  { month: 9, names: ['กันยายน', 'กันยา', 'ก.ย.', 'กย', 'sep', 'september'] },
+  { month: 10, names: ['ตุลาคม', 'ตุลา', 'ต.ค.', 'ตค', 'oct', 'october'] },
+  { month: 11, names: ['พฤศจิกายน', 'พฤศจิกา', 'พ.ย.', 'พย', 'nov', 'november'] },
+  { month: 12, names: ['ธันวาคม', 'ธันวา', 'ธ.ค.', 'ธค', 'dec', 'december'] }
+];
+
+function compactDateText(text) {
+  return normaliseThaiDigits(String(text ?? '').toLowerCase())
+    .replace(/\./g, '')
+    .replace(/\s+/g, '')
+    .replace(/วันที่|วันที|วันเดินทาง|เดินทางวันที่|ไปวันที่|จองวันที่|เดือน/g, '');
+}
+
+function parseMonthNameDate(text, fallbackYear) {
+  const compact = compactDateText(text);
+  const aliases = THAI_MONTH_ALIASES
+    .flatMap(({ month, names }) => names.map((name) => ({ month, name: compactDateText(name) })))
+    .sort((a, b) => b.name.length - a.name.length);
+
+  for (const { month, name } of aliases) {
+    const index = compact.indexOf(name);
+    if (index === -1) continue;
+
+    const beforeNumbers = compact.slice(0, index).match(/\d+/g) ?? [];
+    const afterNumbers = compact.slice(index + name.length).match(/\d+/g) ?? [];
+    let day = beforeNumbers.length ? beforeNumbers[beforeNumbers.length - 1] : null;
+    let year = beforeNumbers.length ? afterNumbers[0] : afterNumbers[1];
+    if (!day && afterNumbers.length) {
+      day = afterNumbers[0];
+      year = afterNumbers[1];
+    }
+
+    if (!day) continue;
+    return isoDate(yearFromInput(year, fallbackYear), month, Number(day));
+  }
+
+  return null;
 }
 
 function parseTypedTime(text) {
@@ -211,20 +259,8 @@ function parseTypedDate(text) {
     return isoDate(year, Number(match[2]), Number(match[1]));
   }
 
-  const months = [
-    ['มกราคม', 'ม.ค.', 'มค', 'jan'], ['กุมภาพันธ์', 'ก.พ.', 'กพ', 'feb'],
-    ['มีนาคม', 'มี.ค.', 'มีค', 'mar'], ['เมษายน', 'เม.ย.', 'เมย', 'apr'],
-    ['พฤษภาคม', 'พ.ค.', 'พค', 'may'], ['มิถุนายน', 'มิ.ย.', 'มิย', 'jun'],
-    ['กรกฎาคม', 'ก.ค.', 'กค', 'jul'], ['สิงหาคม', 'ส.ค.', 'สค', 'aug'],
-    ['กันยายน', 'ก.ย.', 'กย', 'sep'], ['ตุลาคม', 'ต.ค.', 'ตค', 'oct'],
-    ['พฤศจิกายน', 'พ.ย.', 'พย', 'nov'], ['ธันวาคม', 'ธ.ค.', 'ธค', 'dec']
-  ];
-  for (const [index, names] of months.entries()) {
-    if (names.some((name) => value.includes(name))) {
-      match = value.match(/(?:วันที่|วันที|วัน)?\s*(\d{1,2})/);
-      if (match) return isoDate(currentYear, index + 1, Number(match[1]));
-    }
-  }
+  const monthNameDate = parseMonthNameDate(value, currentYear);
+  if (monthNameDate) return monthNameDate;
 
   match = value.match(/(?:วันที่|วันที|วันเดินทาง|เดินทางวันที่|ไปวันที่|จองวันที่)\s*(\d{1,2})/);
   if (match) return dateFromDay(Number(match[1]), value);
