@@ -83,11 +83,11 @@ function botEnabled() {
 }
 function handoffToAdmin(userId, source = null) {
   if (!isBookingOpenFor(userId, source)) return closeBookingAfterHours(userId);
-  setState(userId, { handoffToAdmin: true, booking: null });
+  setState(userId, { handoffToAdmin: true, handoffToAdminDate: bangkokDate(), booking: null });
   return adminContact();
 }
 function unclearHandoffToAdmin(userId) {
-  setState(userId, { handoffToAdmin: true, booking: null });
+  setState(userId, { handoffToAdmin: true, handoffToAdminDate: bangkokDate(), booking: null });
   return {
     type: 'text',
     text: 'ขออภัยค่ะ ระบบยังไม่เข้าใจข้อความที่พิมพ์มา 🙏\n\nเดี๋ยวให้แอดมินมาตอบต่อนะคะ\nหากต้องการให้บอทเริ่มถามใหม่ ให้พิมพ์ว่า เริ่มถามใหม่ หรือ จองตั๋ว ค่ะ'
@@ -807,7 +807,7 @@ ${dateList}
 
 async function scheduleSummaryForDate(userId, date) {
   if (!(await hasSchedulesOnDate(date))) {
-    setState(userId, { handoffToAdmin: true, booking: null, flowStep: null });
+    setState(userId, { handoffToAdmin: true, handoffToAdminDate: bangkokDate(), booking: null, flowStep: null });
     return {
       type: 'text',
       text: `ขออภัยค่ะ วันที่ ${thaiDate(date)} ยังไม่มีข้อมูลรอบรถในระบบ 🙏
@@ -830,7 +830,7 @@ async function scheduleSummaryForDate(userId, date) {
   }
 
   if (!routeGroups.length) {
-    setState(userId, { handoffToAdmin: true, booking: null, flowStep: null });
+    setState(userId, { handoffToAdmin: true, handoffToAdminDate: bangkokDate(), booking: null, flowStep: null });
     return {
       type: 'text',
       text: `ขออภัยค่ะ วันที่ ${thaiDate(date)} ยังไม่มีข้อมูลรอบรถในระบบ 🙏
@@ -1434,6 +1434,9 @@ async function handleEvent(event) {
 
   if (userState(userId).afterHoursNoticeSent && !isBookingOpenFor(userId, event.source)) return;
   if (userState(userId).afterHoursNoticeSent && isBookingOpenFor(userId, event.source)) setState(userId, { afterHoursNoticeSent: false });
+  if (userState(userId).handoffToAdmin && userState(userId).handoffToAdminDate !== bangkokDate()) {
+    setState(userId, { handoffToAdmin: false, handoffToAdminDate: null });
+  }
   let message;
   if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
