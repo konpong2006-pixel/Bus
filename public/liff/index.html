@@ -332,11 +332,29 @@
     }
 
     .status {
-      min-height: 24px;
-      margin: 10px 4px;
+      display: none;
+      margin: 12px 0 4px;
+      padding: 12px 13px;
+      border: 1px solid #f2b8b5;
+      border-left: 5px solid var(--red);
+      border-radius: 14px;
+      background: #fff4f3;
       color: var(--red);
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 850;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+
+    .status:not(:empty) {
+      display: block;
+    }
+
+    .status.ok {
+      border-color: #b7dfc4;
+      border-left-color: var(--green);
+      background: #f1fbf5;
+      color: var(--green);
     }
 
     .result {
@@ -480,7 +498,6 @@
 
     <section class="notice">
       <div>ℹ️ เลือกวันที่ จุดขึ้น จุดลง และรอบรถตามป้ายที่มีในระบบค่ะ</div>
-      <div>💰 หากเป็นระยะใกล้ ระบบคิดราคา 250 บาทค่ะ</div>
       <div>⏰ รับจองอัตโนมัติ 07.00-22.00 น.</div>
     </section>
 
@@ -623,7 +640,7 @@
 
     function setStatus(text, isError = true) {
       els.status.textContent = text || '';
-      els.status.style.color = isError ? '#b42318' : '#08784f';
+      els.status.classList.toggle('ok', Boolean(text) && !isError);
     }
 
     async function api(path, init) {
@@ -855,7 +872,7 @@
         await initLiff(config.liffId);
         if (!config.bookingOpenByTime) {
           showBookingClosedModal();
-          setStatus('⏰ ขณะนี้อยู่นอกเวลารับจองอัตโนมัติ 07.00-22.00 น. 🌅 กรุณารอเริ่มจองใหม่ตอนเช้าค่ะ ☎️ หากเร่งด่วนมาก โทร 092-774-4341 ได้ค่ะ ⚠️ แต่อาจไม่สะดวกรับสายในช่วงนอกเวลาทำการ');
+          setStatus('⏰ ตอนนี้อยู่นอกเวลารับจองอัตโนมัติ\nรับจอง 07.00-22.00 น. กรุณาเริ่มจองใหม่ตอนเช้าค่ะ\n☎️ เร่งด่วนมาก โทร 092-774-4341 ได้ค่ะ\n⚠️ แอดมินอาจไม่สะดวกรับสายนอกเวลา');
         }
 
         const data = await api('/api/liff/options');
