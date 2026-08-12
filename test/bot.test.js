@@ -42,12 +42,12 @@ test('offers every route stop as a pickup and dropoff in the valid direction', a
   assert.equal(kabinDropoffs.includes('chonburi-terminal'), true);
 });
 
-test('uses daily default schedules when no date-specific schedule exists', async () => {
-  assert.deepEqual((await schedulesFor('RY-KOR', '2026-07-21')).map((item) => item.departureTime), ['04:00', '06:00', '10:00']);
+test('does not expose sample schedules for dates without real data', async () => {
+  assert.deepEqual(await schedulesFor('RY-KOR', '2026-07-21'), []);
 });
 
-test('uses date-specific schedules in preference to defaults', async () => {
-  assert.deepEqual((await schedulesFor('RY-KOR', '2026-07-22')).map((item) => item.departureTime), ['07:00']);
+test('has no old example schedule data left', async () => {
+  assert.deepEqual(await schedulesFor('RY-KOR', '2026-07-22'), []);
 });
 
 test('loads real Korat outbound schedules with bus and driver phones', async () => {
@@ -79,7 +79,8 @@ test('loads real Rayong return schedules and keeps unknown driver phones blank',
 });
 
 test('detects dates with explicit schedules', async () => {
-  assert.equal(await hasSchedulesOnDate('2026-07-22'), true);
+  assert.equal(await hasSchedulesOnDate('2026-08-13'), true);
+  assert.equal(await hasSchedulesOnDate('2026-07-22'), false);
   assert.equal(await hasSchedulesOnDate('2026-08-22'), false);
 });
 
