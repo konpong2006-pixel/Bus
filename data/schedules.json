@@ -12,6 +12,8 @@
     { "id": "real-2026-08-13-korry-1320", "date": "2026-08-13", "routeId": "KOR-RY", "departureTime": "13:20", "busNumber": "267-19", "driverPhone": "091-342-7497", "active": true },
     { "id": "real-2026-08-13-korcb-1300", "date": "2026-08-13", "routeId": "KOR-CB", "departureTime": "13:00", "busNumber": "265-13", "driverPhone": "06-4775-2023", "active": true },
     { "id": "real-2026-08-13-korcb-1500", "date": "2026-08-13", "routeId": "KOR-CB", "departureTime": "15:00", "busNumber": "265-4", "driverPhone": "089-844-3052", "active": true },
+    { "id": "real-2026-08-13-cbkor-1100", "date": "2026-08-13", "routeId": "CB-KOR", "departureTime": "11:00", "busNumber": "265-12", "driverPhone": "086-257-9180", "active": true },
+    { "id": "real-2026-08-13-cbkor-1500", "date": "2026-08-13", "routeId": "CB-KOR", "departureTime": "15:00", "busNumber": "265-6", "driverPhone": "093-439-1839", "active": true },
     { "id": "real-2026-08-13-rykor-0400", "date": "2026-08-13", "routeId": "RY-KOR", "departureTime": "04:00", "busNumber": "267-44", "driverPhone": "0982713730", "active": true },
     { "id": "real-2026-08-13-rykor-0600", "date": "2026-08-13", "routeId": "RY-KOR", "departureTime": "06:00", "busNumber": "267-19", "driverPhone": "091-342-7497", "active": true },
     { "id": "real-2026-08-13-rykor-0900", "date": "2026-08-13", "routeId": "RY-KOR", "departureTime": "09:00", "busNumber": "267-29", "driverPhone": "096-339-0599", "active": true },
