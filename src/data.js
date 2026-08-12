@@ -268,7 +268,12 @@ async function loadSheetData() {
 export async function busData() {
   const now = Date.now();
   if (cache.value && cache.expiresAt > now) return cache.value;
-  cache = { expiresAt: now + CACHE_MS, value: await loadSheetData() };
+  try {
+    cache = { expiresAt: now + CACHE_MS, value: await loadSheetData() };
+  } catch (error) {
+    console.error('Sheet data load failed, using local fallback data:', error);
+    cache = { expiresAt: now + CACHE_MS, value: fallbackData() };
+  }
   return cache.value;
 }
 
