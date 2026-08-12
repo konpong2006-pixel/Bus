@@ -8,12 +8,15 @@ const root = path.join(dirname, '..');
 function loadDotEnv() {
   const envPath = path.join(root, '.env');
   if (!fs.existsSync(envPath)) return;
+
   const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
+
     const index = trimmed.indexOf('=');
     if (index <= 0) continue;
+
     const key = trimmed.slice(0, index).trim();
     let value = trimmed.slice(index + 1).trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
@@ -50,17 +53,21 @@ async function lineApi(pathname, options = {}) {
       ...(options.headers || {})
     }
   });
+
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
-  if (!response.ok) throw new Error(`${options.method || 'GET'} ${pathname} failed: ${response.status} ${JSON.stringify(data)}`);
+  if (!response.ok) {
+    throw new Error(`${options.method || 'GET'} ${pathname} failed: ${response.status} ${JSON.stringify(data)}`);
+  }
   return data;
 }
 
 async function uploadRichMenuImage(richMenuId) {
   const image = fs.readFileSync(imagePath);
-  const contentType = path.extname(imagePath).toLowerCase() === '.jpg' || path.extname(imagePath).toLowerCase() === '.jpeg'
+  const contentType = ['.jpg', '.jpeg'].includes(path.extname(imagePath).toLowerCase())
     ? 'image/jpeg'
     : 'image/png';
+
   const response = await fetch(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, {
     method: 'POST',
     headers: {
@@ -69,6 +76,7 @@ async function uploadRichMenuImage(richMenuId) {
     },
     body: image
   });
+
   const text = await response.text();
   if (!response.ok) throw new Error(`Upload rich menu image failed: ${response.status} ${text}`);
 }
