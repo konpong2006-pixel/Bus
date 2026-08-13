@@ -1617,7 +1617,14 @@ async function handleEvent(event) {
 }
 
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
-app.get('/health', (_req, res) => res.json({ ok: true, version: APP_VERSION }));
+app.get('/health', (_req, res) => res.json({
+  ok: true,
+  version: APP_VERSION,
+  botEnabled: botEnabled(),
+  bookingOpen: isBookingOpen(),
+  publicBaseUrl: process.env.PUBLIC_BASE_URL || '',
+  liffConfigured: Boolean(String(process.env.LIFF_ID || '').trim())
+}));
 app.get('/liff', (_req, res) => res.sendFile('index.html', { root: 'public/liff' }));
 app.get('/payment-qr-dynamic.png', async (req, res) => {
   try {
