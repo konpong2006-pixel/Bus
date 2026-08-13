@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const APPS_SCRIPT_CACHE_MS = 60_000;
-const DEFAULT_APPS_SCRIPT_TIMEOUT_MS = 6000;
+const DEFAULT_APPS_SCRIPT_TIMEOUT_MS = 12000;
 
 let appsScriptCache = { expiresAt: 0, data: null };
 
