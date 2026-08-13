@@ -19,7 +19,7 @@ const state = new Map();
 const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
-const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130650016A000000677010112011501075360001028602150140000095541220303SCB5802TH53037646220071600000000014206306304931B';
+const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130750016A00000067701011201150994000164891300220070969100160000905120308MHG1000053037645802TH6304A560';
 const thaiFontBuffer = readFileSync(new URL('../node_modules/@fontsource/noto-sans-thai/files/noto-sans-thai-thai-700-normal.woff', import.meta.url));
 const THAI_FONT = opentype.parse(thaiFontBuffer.buffer.slice(
   thaiFontBuffer.byteOffset,
