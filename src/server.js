@@ -1501,6 +1501,7 @@ async function handleEvent(event) {
     setState(userId, { handoffToAdmin: false, handoffToAdminDate: null });
   }
   let message;
+  let afterReply = null;
   if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
     if (userState(userId).handoffToAdmin) return;
@@ -1510,7 +1511,7 @@ async function handleEvent(event) {
     } else if (wantsScheduleCheck(event.message.text)) {
       const date = parseTypedDate(event.message.text);
       setState(userId, { flowStep: 'check_date', booking: null });
-      pushScheduleFollowup(event.source, userId, date).catch((error) => console.error(error));
+      afterReply = () => pushScheduleFollowup(event.source, userId, date);
       message = loadingScheduleMessage();
     } else if (shouldSendDailyGuide(userId) || shouldResumeFromHandoff(event.message.text)) {
       setState(userId, { chatGuideSent: true, chatGuideSentDate: bangkokDate(), booking: null, flowStep: null });
@@ -1526,17 +1527,17 @@ async function handleEvent(event) {
     const action = params.get('action');
     if (action === 'check_schedule') {
       setState(userId, { flowStep: 'check_date', booking: null });
-      pushScheduleFollowup(event.source, userId).catch((error) => console.error(error));
+      afterReply = () => pushScheduleFollowup(event.source, userId);
       message = loadingScheduleMessage();
     }
     if (action === 'check_date') {
       const date = params.get('value');
       if (date) {
-        pushScheduleFollowup(event.source, userId, date).catch((error) => console.error(error));
+        afterReply = () => pushScheduleFollowup(event.source, userId, date);
         message = loadingScheduleMessage();
       } else {
         setState(userId, { flowStep: 'check_date', booking: null });
-        pushScheduleFollowup(event.source, userId).catch((error) => console.error(error));
+        afterReply = () => pushScheduleFollowup(event.source, userId);
         message = loadingScheduleMessage();
       }
     }
@@ -1553,6 +1554,11 @@ async function handleEvent(event) {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
     body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(message) ? message : [message] })
   });
+  if (afterReply) {
+    setTimeout(() => {
+      afterReply().catch((error) => console.error(error));
+    }, 0);
+  }
 }
 
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
