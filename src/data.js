@@ -9,6 +9,7 @@ const dataDir = path.join(dirname, '..', 'data');
 const CACHE_MS = 60_000;
 
 let cache = { expiresAt: 0, value: null };
+let refreshPromise = null;
 
 function readJson(name) {
   return JSON.parse(fs.readFileSync(path.join(dataDir, name), 'utf8'));
@@ -265,16 +266,47 @@ async function loadSheetData() {
   return { routes, schedules, fares, dayOpen, stopTimes, source: 'sheet' };
 }
 
-export async function busData() {
+async function refreshBusData({ keepStaleOnError = false } = {}) {
   const now = Date.now();
-  if (cache.value && cache.expiresAt > now) return cache.value;
   try {
     cache = { expiresAt: now + CACHE_MS, value: await loadSheetData() };
   } catch (error) {
     console.error('Sheet data load failed, using local fallback data:', error);
+    if (keepStaleOnError && cache.value) {
+      cache = { expiresAt: now + CACHE_MS, value: cache.value };
+      return cache.value;
+    }
     cache = { expiresAt: now + CACHE_MS, value: fallbackData() };
   }
   return cache.value;
+}
+
+export async function busData() {
+  const now = Date.now();
+  if (cache.value && cache.expiresAt > now) return cache.value;
+  if (cache.value) {
+    if (!refreshPromise) {
+      refreshPromise = refreshBusData({ keepStaleOnError: true }).finally(() => {
+        refreshPromise = null;
+      });
+    }
+    return cache.value;
+  }
+  if (!refreshPromise) {
+    refreshPromise = refreshBusData().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+export function warmBusData() {
+  if (!refreshPromise) {
+    refreshPromise = refreshBusData({ keepStaleOnError: true }).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 export async function getRoutes() {

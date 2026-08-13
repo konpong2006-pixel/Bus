@@ -5,7 +5,7 @@ import { middleware } from '@line/bot-sdk';
 import opentype from 'opentype.js';
 import QRCode from 'qrcode';
 import sharp from 'sharp';
-import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, getRoutes, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from './data.js';
+import { availableScheduleDates, dropoffStops, fareForJourney, getRoute, getRoutes, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor, warmBusData } from './data.js';
 import { appendPaidBooking, backendSheetConfigured, fareForBookingFromSheet } from './googleSheets.js';
 import { slipAmount, slipDate, slipOkConfigured, slipReceiver, verifySlipImage } from './slipok.js';
 import { bangkokDate, bangkokHour, thaiDate } from './time.js';
@@ -803,6 +803,10 @@ ${dateList}
 
 async function dateButtons(action = 'date') {
   const dates = await availableScheduleDates();
+  return buttonsForDates(dates, action);
+}
+
+function buttonsForDates(dates, action = 'date') {
   return dates.map((date) => {
     const day = String(Number(date.slice(8, 10)));
     return button(day, `action=${action}&value=${date}`, day);
@@ -823,6 +827,10 @@ function wantsScheduleCheck(text) {
 async function askScheduleDate(userId) {
   setState(userId, { flowStep: 'check_date', booking: null });
   const dates = await availableScheduleDates();
+  return askScheduleDateFromDates(userId, dates);
+}
+
+function askScheduleDateFromDates(userId, dates) {
   const dateList = dates.length
     ? dates.map((date) => `- ${thaiDate(date)}`).join('\n')
     : '- ตอนนี้ยังไม่มีวันที่เปิดให้เช็กในระบบ';
@@ -834,9 +842,16 @@ ${dateList}
 
 👇 กดเลขวันที่ด้านล่าง หรือพิมพ์วันที่ได้เลยค่ะ
 เช่น 12, 12/8, วันที่ 12`, [
-    ...await dateButtons('check_date'),
+    ...buttonsForDates(dates, 'check_date'),
     button('ติดต่อแอดมิน', 'action=contact_admin')
   ]);
+}
+
+function loadingScheduleMessage() {
+  return {
+    type: 'text',
+    text: '🔎 กำลังโหลดข้อมูลรอบรถให้นะคะ\nกรุณารอสักครู่ค่ะ...'
+  };
 }
 
 async function scheduleSummaryForDate(userId, date) {
@@ -1201,6 +1216,12 @@ async function pushAdminText(text) {
   await pushLineMessages(to, [{ type: 'text', text }]);
 }
 
+function sourceTargetId(source) {
+  if (source?.type === 'group') return source.groupId;
+  if (source?.type === 'room') return source.roomId;
+  return source?.userId;
+}
+
 async function pushLineMessages(to, messages) {
   if (!to || !Array.isArray(messages) || messages.length === 0) return false;
   const response = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -1213,6 +1234,14 @@ async function pushLineMessages(to, messages) {
     throw new Error(`LINE push failed: ${response.status} ${body}`);
   }
   return true;
+}
+
+async function pushScheduleFollowup(source, userId, date = null) {
+  const to = sourceTargetId(source);
+  if (!to) return;
+  const stateId = userId || to;
+  const followup = date ? await scheduleSummaryForDate(stateId, date) : await askScheduleDate(stateId);
+  await pushLineMessages(to, Array.isArray(followup) ? followup : [followup]);
 }
 
 function slipOkErrorText(result) {
@@ -1479,7 +1508,10 @@ async function handleEvent(event) {
     if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
       message = handoffToAdmin(userId, event.source);
     } else if (wantsScheduleCheck(event.message.text)) {
-      message = await dateMessage(userId, event.message.text, event.source);
+      const date = parseTypedDate(event.message.text);
+      setState(userId, { flowStep: 'check_date', booking: null });
+      pushScheduleFollowup(event.source, userId, date).catch((error) => console.error(error));
+      message = loadingScheduleMessage();
     } else if (shouldSendDailyGuide(userId) || shouldResumeFromHandoff(event.message.text)) {
       setState(userId, { chatGuideSent: true, chatGuideSentDate: bangkokDate(), booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
@@ -1493,11 +1525,20 @@ async function handleEvent(event) {
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
     if (action === 'check_schedule') {
-      message = await askScheduleDate(userId);
+      setState(userId, { flowStep: 'check_date', booking: null });
+      pushScheduleFollowup(event.source, userId).catch((error) => console.error(error));
+      message = loadingScheduleMessage();
     }
     if (action === 'check_date') {
       const date = params.get('value');
-      message = date ? await scheduleSummaryForDate(userId, date) : await askScheduleDate(userId);
+      if (date) {
+        pushScheduleFollowup(event.source, userId, date).catch((error) => console.error(error));
+        message = loadingScheduleMessage();
+      } else {
+        setState(userId, { flowStep: 'check_date', booking: null });
+        pushScheduleFollowup(event.source, userId).catch((error) => console.error(error));
+        message = loadingScheduleMessage();
+      }
     }
     if (action === 'restart' || action === 'start_booking' || action === 'auto_booking') {
       message = webBookingOnlyPrompt();
@@ -1655,4 +1696,7 @@ app.use((error, req, res, next) => {
   return next(error);
 });
 
-app.listen(process.env.PORT || 3000, () => console.log(`Bot ready on port ${process.env.PORT || 3000}`));
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`Bot ready on port ${process.env.PORT || 3000}`);
+  warmBusData().catch((error) => console.error('Initial bus data warmup failed:', error));
+});
