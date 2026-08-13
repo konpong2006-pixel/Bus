@@ -20,6 +20,7 @@ const state = new Map();
 const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
+const DEFAULT_LIFF_ID = '2011067844-ev4LeC1D';
 const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130750016A00000067701011201150994000164891300220070969100160000905120308MHG1000053037645802TH6304A560';
 const thaiFontBuffer = readFileSync(new URL('../node_modules/@fontsource/noto-sans-thai/files/noto-sans-thai-thai-700-normal.woff', import.meta.url));
 const THAI_FONT = opentype.parse(thaiFontBuffer.buffer.slice(
@@ -828,11 +829,12 @@ function buttonsForDates(dates, action = 'date') {
   });
 }
 
+function configuredLiffId() {
+  return String(process.env.LIFF_ID || process.env.DEFAULT_LIFF_ID || DEFAULT_LIFF_ID).trim();
+}
+
 function liffBookingUrl() {
-  const liffId = String(process.env.LIFF_ID || '').trim();
-  if (liffId) return `https://liff.line.me/${liffId}`;
-  const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, '');
-  return baseUrl ? `${baseUrl}/liff` : 'https://bus-test-wsena.onrender.com/liff';
+  return `https://liff.line.me/${configuredLiffId()}`;
 }
 
 function wantsScheduleCheck(text) {
@@ -1641,7 +1643,7 @@ app.get('/payment-qr-dynamic.png', async (req, res) => {
   }
 });
 app.get('/api/liff/config', (_req, res) => {
-  const liffId = process.env.LIFF_ID || '';
+  const liffId = configuredLiffId();
   res.json({
     ok: true,
     liffId,

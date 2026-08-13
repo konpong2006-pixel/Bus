@@ -29,10 +29,12 @@ function loadDotEnv() {
 loadDotEnv();
 
 const token = process.env.RICH_MENU_CHANNEL_ACCESS_TOKEN || process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const liffUrl = process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : '';
+const defaultLiffId = '2011067844-ev4LeC1D';
+const liffId = String(process.env.LIFF_ID || process.env.DEFAULT_LIFF_ID || defaultLiffId).trim();
+const liffUrl = liffId ? `https://liff.line.me/${liffId}` : '';
 const baseUrl = liffUrl
   || process.env.RICH_MENU_LINK_URL
-  || (process.env.PUBLIC_BASE_URL ? `${process.env.PUBLIC_BASE_URL.replace(/\/$/, '')}/liff` : '');
+  || '';
 const imagePath = process.env.RICH_MENU_IMAGE_PATH
   ? path.resolve(process.env.RICH_MENU_IMAGE_PATH)
   : path.join(root, 'public', 'rich-menu', 'booking.png');
@@ -82,7 +84,7 @@ async function uploadRichMenuImage(richMenuId) {
 }
 
 async function main() {
-  requireValue(baseUrl, 'RICH_MENU_LINK_URL or PUBLIC_BASE_URL');
+  requireValue(baseUrl, 'LIFF_ID or RICH_MENU_LINK_URL');
   if (!fs.existsSync(imagePath)) throw new Error(`Rich menu image not found: ${imagePath}`);
 
   if (deleteExisting) {

@@ -143,7 +143,8 @@ npm run setup:rich-menu
 
 ```text
 LINE_CHANNEL_ACCESS_TOKEN=token ของ LINE OA ที่ต้องการตั้งเมนู
-RICH_MENU_LINK_URL=https://bus-wbhr.onrender.com/liff
+LIFF_ID=2011067844-ev4LeC1D
+RICH_MENU_LINK_URL=https://liff.line.me/2011067844-ev4LeC1D
 RICH_MENU_NAME=Bus booking rich menu
 RICH_MENU_CHAT_BAR_TEXT=เมนูจองตั๋ว
 RICH_MENU_DELETE_EXISTING=true
@@ -152,8 +153,12 @@ RICH_MENU_DELETE_EXISTING=true
 ถ้าทำตัวทดสอบ ให้เปลี่ยน `LINE_CHANNEL_ACCESS_TOKEN` เป็น token ของ OA ทดสอบ และใช้:
 
 ```text
-RICH_MENU_LINK_URL=https://bus-test-wsena.onrender.com/liff
+LIFF_ID=2011067844-ev4LeC1D
+RICH_MENU_LINK_URL=https://liff.line.me/2011067844-ev4LeC1D
 ```
+
+Important: do not point the customer Rich Menu to `https://*.onrender.com/liff`.
+Use `https://liff.line.me/<LIFF_ID>` only, so users do not see the Render loading page.
 
 หมายเหตุ:
 
