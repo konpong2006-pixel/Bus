@@ -1550,9 +1550,8 @@ async function handleEvent(event) {
   else if (event.type === 'message' && event.message.type === 'text') {
     const value = cleanCustomerText(event.message.text);
     if (isRichMenuScheduleText(event.message.text)) {
-      setState(userId, { booking: null, flowStep: null });
-      message = webBookingOnlyPrompt();
-      logLineEvent(event, 'reply:rich_menu_schedule_help');
+      message = await askScheduleDate(userId);
+      logLineEvent(event, 'reply:rich_menu_schedule_dates');
     } else if (userState(userId).handoffToAdmin) {
       logLineEvent(event, 'skip:handoff_to_admin');
       return;
