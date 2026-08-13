@@ -15,6 +15,7 @@ for (const key of required) if (!process.env[key]) console.warn(`คำเตื
 
 const config = { channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN, channelSecret: process.env.LINE_CHANNEL_SECRET };
 const app = express();
+const APP_VERSION = 'rich-menu-schedule-help-v3';
 const state = new Map();
 const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
@@ -80,6 +81,20 @@ function isBookingOpenFor(userId, source = null) {
 }
 function botEnabled() {
   return !['false', '0', 'off', 'no'].includes(String(process.env.BOT_ENABLED ?? 'true').trim().toLowerCase());
+}
+function logLineEvent(event, status, extra = {}) {
+  if (String(process.env.LOG_LINE_EVENTS ?? 'true').trim().toLowerCase() === 'false') return;
+  const text = event.message?.type === 'text' ? cleanCustomerText(event.message.text).slice(0, 80) : undefined;
+  console.log('LINE event', JSON.stringify({
+    status,
+    type: event.type,
+    messageType: event.message?.type,
+    sourceType: event.source?.type,
+    hasUserId: Boolean(event.source?.userId),
+    hasGroupId: Boolean(event.source?.groupId),
+    text,
+    ...extra
+  }));
 }
 function handoffToAdmin(userId, source = null) {
   if (!isBookingOpenFor(userId, source)) return closeBookingAfterHours(userId);
@@ -825,7 +840,17 @@ function wantsScheduleCheck(text) {
 }
 
 function isRichMenuScheduleText(text) {
-  return ['เช็กรอบรถ', 'เช็ครอบรถ'].includes(cleanCustomerText(text));
+  const compact = cleanCustomerText(text).replace(/\s+/g, '');
+  return [
+    'เช็กรอบ',
+    'เช็ครอบ',
+    'เช็กรอบรถ',
+    'เช็ครอบรถ',
+    'ตรวจรอบ',
+    'ตรวจรอบรถ',
+    'ดูรอบ',
+    'ดูรอบรถ'
+  ].includes(compact);
 }
 
 async function askScheduleDate(userId) {
@@ -1484,15 +1509,26 @@ async function typedBookingModeMessage(userId, text, source = null) {
 }
 
 async function handleEvent(event) {
-  if (!event.replyToken) return;
-  if (!botEnabled()) return;
-  if (isAdminChat(event.source)) return;
+  if (!event.replyToken) {
+    logLineEvent(event, 'skip:no_reply_token');
+    return;
+  }
+  if (!botEnabled()) {
+    logLineEvent(event, 'skip:bot_disabled');
+    return;
+  }
+  if (isAdminChat(event.source)) {
+    logLineEvent(event, 'skip:admin_chat');
+    return;
+  }
   const userId = event.source.userId;
+  logLineEvent(event, 'received', { handoffToAdmin: Boolean(userState(userId).handoffToAdmin) });
 
   if (event.type === 'message' && event.message.type === 'text') {
     const commandMessage = sourceIdMessage(event, event.message.text)
       ?? await testerCommandMessage(event, event.message.text);
     if (commandMessage) {
+      logLineEvent(event, 'reply:command');
       await fetch('https://api.line.me/v2/bot/message/reply', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
         body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(commandMessage) ? commandMessage : [commandMessage] })
@@ -1514,7 +1550,9 @@ async function handleEvent(event) {
     if (isRichMenuScheduleText(event.message.text)) {
       setState(userId, { booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
+      logLineEvent(event, 'reply:rich_menu_schedule_help');
     } else if (userState(userId).handoffToAdmin) {
+      logLineEvent(event, 'skip:handoff_to_admin');
       return;
     } else if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
       message = handoffToAdmin(userId, event.source);
@@ -1527,10 +1565,14 @@ async function handleEvent(event) {
       setState(userId, { chatGuideSent: true, chatGuideSentDate: bangkokDate(), booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
     } else {
+      logLineEvent(event, 'skip:no_match');
       return;
     }
   } else if (event.type === 'message' && event.message.type === 'image') {
-    if (userState(userId).handoffToAdmin) return;
+    if (userState(userId).handoffToAdmin) {
+      logLineEvent(event, 'skip:image_handoff_to_admin');
+      return;
+    }
     message = await slipMessage(event);
   } else if (event.type === 'postback') {
     const params = new URLSearchParams(event.postback.data);
@@ -1559,7 +1601,10 @@ async function handleEvent(event) {
       message = webBookingOnlyPrompt();
     }
   }
-  if (!message) return;
+  if (!message) {
+    logLineEvent(event, 'skip:no_message');
+    return;
+  }
   await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
     body: JSON.stringify({ replyToken: event.replyToken, messages: Array.isArray(message) ? message : [message] })
@@ -1572,7 +1617,7 @@ async function handleEvent(event) {
 }
 
 app.get('/', (_req, res) => res.send('LINE Bus Time Bot is running.'));
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req, res) => res.json({ ok: true, version: APP_VERSION }));
 app.get('/liff', (_req, res) => res.sendFile('index.html', { root: 'public/liff' }));
 app.get('/payment-qr-dynamic.png', async (req, res) => {
   try {
