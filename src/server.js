@@ -1510,13 +1510,14 @@ async function handleEvent(event) {
   let afterReply = null;
   if (event.type === 'follow') message = await start(userId);
   else if (event.type === 'message' && event.message.type === 'text') {
-    if (userState(userId).handoffToAdmin) return;
     const value = cleanCustomerText(event.message.text);
-    if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
-      message = handoffToAdmin(userId, event.source);
-    } else if (isRichMenuScheduleText(event.message.text)) {
+    if (isRichMenuScheduleText(event.message.text)) {
       setState(userId, { booking: null, flowStep: null });
       message = webBookingOnlyPrompt();
+    } else if (userState(userId).handoffToAdmin) {
+      return;
+    } else if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
+      message = handoffToAdmin(userId, event.source);
     } else if (wantsScheduleCheck(event.message.text)) {
       const date = parseTypedDate(event.message.text);
       setState(userId, { flowStep: 'check_date', booking: null });
