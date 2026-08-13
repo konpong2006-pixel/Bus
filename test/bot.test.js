@@ -78,8 +78,29 @@ test('loads real Rayong return schedules and keeps unknown driver phones blank',
   ]);
 });
 
+test('loads real 2026-08-14 partner schedules only', async () => {
+  assert.deepEqual((await schedulesFor('KOR-RY', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
+    '09:20 267-7 082-140-4375',
+    '10:20 267-15 089-845-7782',
+    '11:20 267-10 089-9498867',
+    '12:20 267-19 091-342-7497'
+  ]);
+  assert.deepEqual((await schedulesFor('KOR-CB', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
+    '13:00 265-13 06-4775-2023',
+    '15:00 265-4 089-844-3052'
+  ]);
+  assert.deepEqual((await schedulesFor('RY-KOR', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
+    '05:00 267-23 063-7730807',
+    '06:00 267-7 082-140-4375',
+    '07:30 267-15 089-845-7782',
+    '12:00 267-10 089-9498867',
+    '17:00 267-6 081-0646887'
+  ]);
+});
+
 test('detects dates with explicit schedules', async () => {
   assert.equal(await hasSchedulesOnDate('2026-08-13'), true);
+  assert.equal(await hasSchedulesOnDate('2026-08-14'), true);
   assert.equal(await hasSchedulesOnDate('2026-07-22'), false);
   assert.equal(await hasSchedulesOnDate('2026-08-22'), false);
 });
