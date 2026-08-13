@@ -21,6 +21,7 @@ const processedSlipMessageIds = new Set();
 const BOOKING_OPEN_HOUR = 7;
 const BOOKING_CLOSE_HOUR = 22;
 const DEFAULT_LIFF_ID = '2011067844-ev4LeC1D';
+const DEFAULT_LIFF_WEB_ORIGIN = 'https://wsena-booking-liff.konpong2006.chatgpt.site';
 const DEFAULT_PAYMENT_QR_PAYLOAD = '00020101021130750016A00000067701011201150994000164891300220070969100160000905120308MHG1000053037645802TH6304A560';
 const thaiFontBuffer = readFileSync(new URL('../node_modules/@fontsource/noto-sans-thai/files/noto-sans-thai-thai-700-normal.woff', import.meta.url));
 const THAI_FONT = opentype.parse(thaiFontBuffer.buffer.slice(
@@ -33,6 +34,19 @@ const LATIN_FONT = opentype.parse(latinFontBuffer.buffer.slice(
   latinFontBuffer.byteOffset + latinFontBuffer.byteLength
 ));
 app.use(express.static('public'));
+app.use('/api/liff', (req, res, next) => {
+  const allowedOrigins = envList('LIFF_WEB_ORIGIN', 'LIFF_WEB_ORIGINS');
+  if (!allowedOrigins.length) allowedOrigins.push(DEFAULT_LIFF_WEB_ORIGIN);
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
+});
 app.use('/api/liff', express.json({ limit: '2mb' }));
 
 const button = (label, data, displayText = label) => ({ type: 'action', action: { type: 'postback', label, data, displayText } });
