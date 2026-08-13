@@ -824,6 +824,10 @@ function wantsScheduleCheck(text) {
   return /เช็กรอบ|เช็ครอบ|ตรวจรอบ|ดูรอบ|รอบรถ|มีรอบ|รอบไหน|กี่โมง/.test(cleanCustomerText(text));
 }
 
+function isRichMenuScheduleText(text) {
+  return ['เช็กรอบรถ', 'เช็ครอบรถ'].includes(cleanCustomerText(text));
+}
+
 async function askScheduleDate(userId) {
   setState(userId, { flowStep: 'check_date', booking: null });
   const dates = await availableScheduleDates();
@@ -934,6 +938,8 @@ function webBookingOnlyPrompt() {
 ระบบจะพาเลือกวันที่ จุดขึ้น จุดลง รอบรถ และกรอกข้อมูลทีละขั้นตอน
 
 ℹ️ เลือกวันที่ จุดขึ้น จุดลง และรอบรถตามป้ายที่มีในระบบค่ะ
+💰 หากเป็นระยะใกล้ ระบบคิดราคา 250 บาทค่ะ
+
 👤 หากต้องการให้แอดมินช่วยดูแล กด "ติดต่อแอดมิน" ได้เลยค่ะ`, [
     uriButton('จองผ่านเว็บ', liffBookingUrl()),
     button('ติดต่อแอดมิน', 'action=contact_admin')
@@ -1508,6 +1514,9 @@ async function handleEvent(event) {
     const value = cleanCustomerText(event.message.text);
     if (/(ติดต่อ|คุย|หา|เรียก).*(แอดมิน|admin)|แอดมิน/.test(value)) {
       message = handoffToAdmin(userId, event.source);
+    } else if (isRichMenuScheduleText(event.message.text)) {
+      setState(userId, { booking: null, flowStep: null });
+      message = webBookingOnlyPrompt();
     } else if (wantsScheduleCheck(event.message.text)) {
       const date = parseTypedDate(event.message.text);
       setState(userId, { flowStep: 'check_date', booking: null });
