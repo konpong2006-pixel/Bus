@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { readFileSync } from 'fs';
+import { pathToFileURL } from 'url';
 import express from 'express';
 import { middleware } from '@line/bot-sdk';
 import opentype from 'opentype.js';
@@ -253,6 +254,10 @@ function parseMonthNameDate(text, fallbackYear) {
   return null;
 }
 
+function stripClockTimes(text) {
+  return String(text ?? '').replace(/(^|[^\d])\d{1,2}\s*[:.]\s*\d{2}(?=$|[^\d])/g, '$1 ');
+}
+
 function parseTypedTime(text) {
   const value = cleanCustomerText(text);
   const format = (hour, minute = '00') => {
@@ -273,6 +278,7 @@ function parseTypedTime(text) {
 
 function parseTypedDate(text) {
   const value = cleanCustomerText(text);
+  const dateValue = stripClockTimes(value);
   const today = bangkokDate();
   const [currentYear] = today.split('-').map(Number);
 
@@ -280,23 +286,25 @@ function parseTypedDate(text) {
   if (/(^|[^ก-ฮa-z0-9])(พรุ่งนี้|พรุ้งนี้|พน\.?|พรุ่งนี้เช้า|พรุ่งนี้บ่าย|พรุ่งนี้เย็น)(?=$|[^ก-ฮa-z0-9])/.test(value)) return relativeDate(1);
   if (/(^|[^ก-ฮa-z0-9])(มะรืน|มะรืนนี้|มรืน)(?=$|[^ก-ฮa-z0-9])/.test(value)) return relativeDate(2);
 
-  let match = value.match(/(\d{4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})/);
+  let match = dateValue.match(/(\d{4})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})/);
   if (match) return isoDate(Number(match[1]), Number(match[2]), Number(match[3]));
 
-  match = value.match(/(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?/);
+  match = dateValue.match(/(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?/);
   if (match) {
     const year = yearFromInput(match[3], currentYear);
     return isoDate(year, Number(match[2]), Number(match[1]));
   }
 
-  const monthNameDate = parseMonthNameDate(value, currentYear);
+  const monthNameDate = parseMonthNameDate(dateValue, currentYear);
   if (monthNameDate) return monthNameDate;
 
   match = value.match(/(?:วันที่|วันที|วันเดินทาง|เดินทางวันที่|ไปวันที่|จองวันที่)\s*(\d{1,2})/);
   if (match) return dateFromDay(Number(match[1]), value);
 
-  match = value.match(/^(\d{1,2})$/);
-  if (match) return dateFromDay(Number(match[1]), value);
+  match = dateValue.match(/^(\d{1,2})$/);
+  if (match) return dateFromDay(Number(match[1]), dateValue);
+
+  if (dateValue !== value) return null;
 
   match = value.match(/(?:^|[^\dA-Za-zก-ฮ])(\d{1,2})(?:$|[^\dA-Za-zก-ฮ])/);
   if (match) {
@@ -1781,7 +1789,11 @@ app.use((error, req, res, next) => {
   return next(error);
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log(`Bot ready on port ${process.env.PORT || 3000}`);
-  warmBusData().catch((error) => console.error('Initial bus data warmup failed:', error));
-});
+export const __test = { parseTypedDate, parseTypedTime, stripClockTimes };
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(process.env.PORT || 3000, () => {
+    console.log(`Bot ready on port ${process.env.PORT || 3000}`);
+    warmBusData().catch((error) => console.error('Initial bus data warmup failed:', error));
+  });
+}

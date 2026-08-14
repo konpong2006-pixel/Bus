@@ -3,6 +3,25 @@ import assert from 'node:assert/strict';
 import { dropoffStops, fareForJourney, hasSchedulesOnDate, pickupStops, routesForJourney, schedulesFor } from '../src/data.js';
 import { addMinutes, bangkokHour } from '../src/time.js';
 
+async function serverTestApi() {
+  process.env.LINE_CHANNEL_ACCESS_TOKEN ??= 'test-token';
+  process.env.LINE_CHANNEL_SECRET ??= 'test-secret';
+  return (await import('../src/server.js')).__test;
+}
+
+test('does not treat typed bus times as travel dates', async () => {
+  const { parseTypedDate } = await serverTestApi();
+  assert.equal(parseTypedDate('ปกติมีรถเย็นมีรอบ18.30'), null);
+  assert.equal(parseTypedDate('รอบ 18:30'), null);
+  assert.equal(parseTypedDate('มีรอบ 07.30 ไหม'), null);
+});
+
+test('still parses explicit travel dates when a time is also present', async () => {
+  const { parseTypedDate } = await serverTestApi();
+  assert.equal(parseTypedDate('2026-08-14 รอบ 18.30'), '2026-08-14');
+  assert.equal(parseTypedDate('14/8/69 เวลา 18:30'), '2026-08-14');
+});
+
 test('finds the forward route when pickup precedes dropoff', async () => {
   assert.deepEqual((await routesForJourney('rayong', 'korat')).map((route) => route.id), ['RY-KOR']);
 });
@@ -62,8 +81,8 @@ test('loads real Korat outbound schedules with bus and driver phones', async () 
     '15:00 265-4 089-844-3052'
   ]);
   assert.deepEqual((await schedulesFor('CB-KOR', '2026-08-13')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
-    '11:00 265-12 086-257-9180',
-    '15:00 265-6 093-439-1839'
+    '11:00 265-13 06-4775-2023',
+    '15:00 265-4 089-844-3052'
   ]);
 });
 
@@ -86,8 +105,8 @@ test('loads real 2026-08-14 partner schedules only', async () => {
     '12:20 267-19 091-342-7497'
   ]);
   assert.deepEqual((await schedulesFor('KOR-CB', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
-    '13:00 265-13 06-4775-2023',
-    '15:00 265-4 089-844-3052'
+    '11:00 265-6 093-439-1839',
+    '13:00 265-12 086-257-9180'
   ]);
   assert.deepEqual((await schedulesFor('RY-KOR', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
     '05:00 267-23 063-7730807',
