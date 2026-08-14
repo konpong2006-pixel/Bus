@@ -108,6 +108,10 @@ test('loads real 2026-08-14 partner schedules only', async () => {
     '11:00 265-6 093-439-1839',
     '13:00 265-12 086-257-9180'
   ]);
+  assert.deepEqual((await schedulesFor('CB-KOR', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
+    '11:00 265-13 06-4775-2023',
+    '15:00 265-4 089-844-3052'
+  ]);
   assert.deepEqual((await schedulesFor('RY-KOR', '2026-08-14')).map((item) => `${item.departureTime} ${item.busNumber} ${item.driverPhone}`), [
     '05:00 267-23 063-7730807',
     '06:00 267-7 082-140-4375',
